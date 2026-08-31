@@ -31,17 +31,38 @@ var AMSSprints = (function () {
   /* §2.3 Acceptance comes from the **Status:** line, not body non-emptiness.
      Canonically a bare "Accepted"/"Pending". Legacy tolerance: "✓ Accepted",
      "✅ **ACCEPTED** by Luke (PO), …", "Accepted — Luke, in-session, …". */
+  /* Scanned line by line rather than matched with a regex: the section often
+     runs to the end of the file (muse-monitor's sprint-5a and 5b), and
+     JavaScript has no end-of-input anchor — \Z matches a literal "Z" — so a
+     lookahead for "next ## heading or end" silently fails on the last section
+     and reads an accepted sprint as pending. */
+  function acceptanceBody(body) {
+    var lines = String(body || '').split(/\r?\n/);
+    var start = -1;
+    for (var i = 0; i < lines.length; i++) {
+      if (/^##\s+Acceptance\s*$/.test(lines[i])) { start = i + 1; break; }
+    }
+    if (start === -1) return null;
+    var end = lines.length;
+    for (var j = start; j < lines.length; j++) {
+      if (/^##\s+/.test(lines[j])) { end = j; break; }
+    }
+    return lines.slice(start, end).join('\n');
+  }
+
   function parseAcceptance(body) {
-    var section = /^##\s+Acceptance\s*$([\s\S]*?)(?=^##\s|\Z)/m.exec(body || '');
-    if (!section) return { accepted: false, status: null, present: false, legacy: false };
-    var m = STATUS_RE.exec(section[1]);
+    var section = acceptanceBody(body);
+    if (section === null) return { accepted: false, status: null, present: false, legacy: false };
+    var m = STATUS_RE.exec(section);
     var raw = m ? m[1].trim() : '';
     var bare = raw.replace(/\*\*/g, '').replace(/[✓✅]/g, '').trim();
     var accepted = /accepted/i.test(bare);
     return {
       accepted: accepted, status: raw, present: true,
-      /* Non-canonical if it is decorated or carries prose beyond the bare word. */
-      legacy: accepted && !/^accepted$/i.test(bare)
+      /* Non-canonical if the value is anything but the bare word — a check mark,
+         bold, or trailing prose. Compared against the raw value, since `bare`
+         has already had the decoration stripped off. */
+      legacy: accepted && raw.trim() !== 'Accepted'
     };
   }
 
