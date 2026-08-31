@@ -594,3 +594,34 @@ agents, one conversation with one agent — and is doing it deliberately to lear
 the trade-offs. The relevant consequence for the implementer: there is no QA
 persona, no architect, nobody to disagree. So flag judgement calls as they are
 made rather than presenting only finished work.
+
+---
+
+## v2 build log
+
+All three steps shipped 2026-08-31. 23 regression checks pass, covering v1's
+board assertions and all three steps.
+
+| Step | Commit | Size after |
+|---|---|---|
+| 1 — square cards, agent colours | `23f8d3d` | 1,566 (+156) |
+| 2 — token, refresh, quota machinery deleted | `efa15de` | 1,747 (+181) |
+| 3 — repo picker | `97c61c2` | 1,895 (+148) |
+
+Against the keep-it-legible constraint: v1 was 1,410 lines across 12 files; v2
+is 1,895 across 13. **Step 2 did not shrink the codebase as predicted** — the
+deletions (ETag cache, `headCommit`, the separate poll path) were real, but the
+token UI cost more than they saved. `app.js` did shrink, 386 → 372.
+
+**Unplanned change worth knowing about:** local css/js URLs now carry version
+stamps. Chrome served a cached script against fresh HTML during testing, which
+on a Pages deploy means users running stale JS after an update. Bump the stamp
+on release.
+
+**Still open from the captured ideas, not built:** idea 2b (marking newly
+changed stories), idea 3 (hover popup), idea 6 (unit tests). The popup's data
+is already parsed and sitting unused — `Model`, `Size` and `Depends on` come
+free with the `Owner` line.
+
+**Deferred by decision:** persistent repo switcher, tap-to-expand on the phone,
+darker-fill option with light text, other git hosts.
