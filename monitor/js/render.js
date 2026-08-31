@@ -1,0 +1,232 @@
+/* Pure model → DOM rendering. Global: AMSRender. No fetching here. */
+var AMSRender = (function () {
+  'use strict';
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined && text !== null) n.textContent = text;
+    return n;
+  }
+  function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+
+  /* Markdown via the CDN renderer, with a plain-text fallback if it failed to
+     load. Links open in a new tab; relative repo links resolve to github.com. */
+  function markdown(text, repo) {
+    if (!text) return '';
+    if (typeof window.marked === 'undefined') {
+      var pre = el('pre'); pre.textContent = text; return pre.outerHTML;
+    }
+    var html = window.marked.parse(text);
+    var box = el('div');
+    box.innerHTML = html;
+    box.querySelectorAll('a[href]').forEach(function (a) {
+      var href = a.getAttribute('href');
+      if (/^https?:/i.test(href)) { a.target = '_blank'; a.rel = 'noopener noreferrer'; return; }
+      if (repo && !/^#/.test(href)) {
+        a.href = 'https://github.com/' + repo + '/blob/HEAD/' + href.replace(/^\.?\//, '');
+        a.target = '_blank'; a.rel = 'noopener noreferrer';
+      }
+    });
+    box.querySelectorAll('script').forEach(function (s) { s.remove(); });
+    return box.innerHTML;
+  }
+
+  function relTime(iso, now) {
+    if (!iso) return 'unknown';
+    var t = new Date(iso).getTime();
+    if (isNaN(t)) return 'unknown';
+    var s = Math.max(0, Math.round(((now || Date.now()) - t) / 1000));
+    if (s < 45) return s + ' s ago';
+    var m = Math.round(s / 60);
+    if (m < 60) return m + ' min ago';
+    var h = Math.round(m / 60);
+    if (h < 24) return h + ' h ago';
+    var d = Math.round(h / 24);
+    if (d === 1) return 'yesterday';
+    if (d < 30) return d + ' d ago';
+    return new Date(t).toISOString().slice(0, 10);
+  }
+
+  var DOT = { done: 'dot', progress: 'dot half', planned: 'dot ring', stale: 'dot stale' };
+
+  /* ---------- status bar (pin 1) ---------- */
+  function statusBar(s) {
+    var bar = $('bar');
+    bar.classList.toggle('stale', !!s.stale);
+    $('bar-repo').textContent = s.repo || '—';
+    $('bar-paths').textContent = s.paths || '';
+    $('bar-latest').textContent = 'Last handoff: ' + relTime(s.latestCommit);
+    $('bar-polled').textContent = s.stale
+      ? 'Stale — last good data ' + relTime(s.lastGood)
+      : 'Checked ' + relTime(s.lastPolled);
+    $('bar-note').textContent = s.note || '';
+    $('bar-note').classList.toggle('hidden', !s.note);
+  }
+
+  /* ---------- board (pins 2-3) ---------- */
+  function storyNode(st) {
+    var n = el('div', 'box story ' + st.state);
+    n.appendChild(el('span', DOT[st.state] || 'dot'));
+    n.appendChild(el('span', 'sid', st.id));
+    n.appendChild(el('span', 'ttl', st.title));
+    n.title = st.id + ' · ' + st.title + ' — ' +
+      ({ done: 'done', progress: 'in progress', planned: 'planned',
+         stale: 'not completed (sprint was accepted with this story open)' }[st.state]);
+    return n;
+  }
+
+  function sprintNode(s) {
+    var row = el('div', 'sprint' + (s.isCurrent ? ' cur' : ''));
+    row.dataset.sprint = s.id;
+
+    var name = el('div', 'box name');
+    name.appendChild(document.createTextNode(s.name));
+    if (s.theme) name.appendChild(el('small', null, s.theme));
+    row.appendChild(name);
+
+    var stories = el('div', 'stories');
+    if (!s.stories.length) stories.appendChild(el('div', 'emptyrow', 'No stories in this sprint file.'));
+    s.stories.forEach(function (st) { stories.appendChild(storyNode(st)); });
+    row.appendChild(stories);
+
+    var accepted = s.acceptance.accepted;
+    row.appendChild(el('div', 'box check' + (accepted ? '' : ' pending'),
+      accepted ? 'Accepted ✓' : 'Accepted'));
+    /* Phone-only duplicate of the checkpoint, shown under the story list. */
+    row.appendChild(el('div', 'box mcheck' + (accepted ? '' : ' pending'),
+      accepted ? 'Accepted ✓' : 'Accepted — pending'));
+    return row;
+  }
+
+  function board(model, selectedId) {
+    var host = $('board');
+    clear(host);
+    if (!model.sprints.length) return;
+    model.sprints.forEach(function (s) {
+      var row = sprintNode(s);
+      if (s.id === selectedId) row.classList.add('shown');
+      host.appendChild(row);
+    });
+
+    var tabs = $('tabs');
+    clear(tabs);
+    model.sprints.forEach(function (s) {
+      var b = el('button', null, s.name.replace(/^Sprint\s*/i, 'S'));
+      b.setAttribute('aria-selected', String(s.id === selectedId));
+      b.dataset.sprint = s.id;
+      tabs.appendChild(b);
+    });
+  }
+
+  /* ---------- latest handoff (pin 4) ---------- */
+  function handoff(h, opts) {
+    opts = opts || {};
+    $('ho-title').textContent = h ? (h.label || h.file) : '—';
+    $('ho-when').textContent = h && h.date ? '— ' + h.date : '';
+    var back = $('ho-back');
+    back.classList.toggle('hidden', !opts.historical);
+
+    var host = $('ho-body');
+    clear(host);
+    if (!h) {
+      host.appendChild(el('p', 'lbl', 'No handoff files found.'));
+      return;
+    }
+
+    var dl = el('dl');
+    h.sections.forEach(function (sec) {
+      dl.appendChild(el('dt', null, sec.name));
+      var dd = el('dd');
+      if (!sec.parts.length) {
+        dd.className = 'empty';
+        dd.textContent = '—';
+      } else {
+        sec.parts.forEach(function (p) {
+          /* Show the file's own wording when it differs from the canonical name,
+             so the legacy mapping is visible rather than silent. */
+          if (!p.canonical) dd.appendChild(el('div', 'srcname', p.heading));
+          var md = el('div', 'md');
+          md.innerHTML = markdown(p.body, opts.repo);
+          dd.appendChild(md);
+        });
+      }
+      dl.appendChild(dd);
+    });
+    host.appendChild(dl);
+
+    if (h.prompt) {
+      var pr = el('div', 'prompt');
+      pr.appendChild(el('div', 'lbl', h.prompt.heading));
+      var pm = el('div', 'md');
+      pm.innerHTML = markdown(h.prompt.body, opts.repo);
+      pr.appendChild(pm);
+      host.appendChild(pr);
+    }
+
+    if (h.extras.length) {
+      var ex = el('div', 'extras');
+      ex.appendChild(el('span', 'lbl', 'Additional sections'));
+      h.extras.forEach(function (e) {
+        ex.appendChild(el('div', 'srcname', e.heading));
+        var m = el('div', 'md');
+        m.innerHTML = markdown(e.body, opts.repo);
+        ex.appendChild(m);
+      });
+      host.appendChild(ex);
+    }
+  }
+
+  /* ---------- history (pin 5) ---------- */
+  function history(entries, selectedFile) {
+    var host = $('hist');
+    clear(host);
+    if (!entries.length) {
+      host.appendChild(el('p', 'lbl', 'No handoffs yet.'));
+      return;
+    }
+    entries.forEach(function (e) {
+      var b = el('button');
+      b.dataset.file = e.name;
+      b.setAttribute('aria-current', String(e.name === selectedFile));
+      b.appendChild(el('span', 'name', e.label || e.name));
+      b.appendChild(el('span', 'when', e.commit ? relTime(e.commit) : (e.date || '')));
+      host.appendChild(b);
+    });
+  }
+
+  /* ---------- whole-page states ---------- */
+  function state(title, bodyNodes) {
+    $('app').classList.add('hidden');
+    var host = $('state');
+    host.classList.remove('hidden');
+    clear(host);
+    var box = el('div', 'state');
+    box.appendChild(el('h2', null, title));
+    (bodyNodes || []).forEach(function (n) { box.appendChild(n); });
+    host.appendChild(box);
+  }
+  function showApp() {
+    $('state').classList.add('hidden');
+    $('app').classList.remove('hidden');
+  }
+  function p(html) { var n = el('p'); n.innerHTML = html; return n; }
+
+  function flash(ids) {
+    ids.forEach(function (id) {
+      var n = $(id);
+      if (!n) return;
+      n.classList.remove('changed');
+      void n.offsetWidth;   /* restart the animation */
+      n.classList.add('changed');
+    });
+  }
+
+  return {
+    statusBar: statusBar, board: board, handoff: handoff, history: history,
+    state: state, showApp: showApp, p: p, el: el, flash: flash,
+    relTime: relTime, markdown: markdown
+  };
+})();

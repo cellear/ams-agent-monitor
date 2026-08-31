@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AMS Agent Monitor</title>
+<link rel="stylesheet" href="css/monitor.css">
+</head>
+<body>
+
+<!-- Whole-page states: landing, not found, non-AMS, error. -->
+<div id="state" class="hidden"></div>
+
+<div id="app" class="hidden">
+  <!-- pin 1 — status bar -->
+  <div class="bar" id="bar">
+    <span class="title">AMS Agent Monitor</span>
+    <span class="lbl"><span id="bar-repo">—</span> &nbsp;·&nbsp; <span id="bar-paths"></span></span>
+    <span class="spacer"></span>
+    <span class="lbl" id="bar-latest"></span>
+    <span class="lbl"><span class="pulse"></span><span id="bar-polled"></span></span>
+    <span class="lbl hidden" id="bar-note"></span>
+    <span class="ro" title="This page never writes to the repository.">Read-only</span>
+  </div>
+
+  <div class="body">
+    <!-- pins 2-3 — sprint board -->
+    <div class="main" id="main">
+      <div class="boardhead">
+        <h2>Sprint board</h2>
+        <div class="legend">
+          <span><span class="dot"></span> done</span>
+          <span><span class="dot half"></span> in progress</span>
+          <span><span class="dot ring"></span> planned</span>
+          <span><span class="dot stale"></span> not completed</span>
+        </div>
+      </div>
+      <!-- phone-only sprint picker (pin 7) -->
+      <div class="tabs" id="tabs" role="tablist"></div>
+      <div id="board"></div>
+      <div id="board-empty" class="inline-note hidden"></div>
+    </div>
+
+    <div class="side">
+      <!-- pin 4 — latest handoff -->
+      <div class="box acc" id="acc-handoff" data-open="true">
+        <button class="acc-btn" data-acc="acc-handoff">
+          <span>Latest handoff</span><span class="chev">▾</span>
+        </button>
+        <div class="acc-body">
+          <div class="panel">
+            <h3>Latest handoff <span class="lbl" id="ho-when"></span></h3>
+            <div class="lbl" id="ho-title"></div>
+            <button class="backlatest hidden" id="ho-back">← back to latest</button>
+            <div class="scroll" id="ho-body"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- pin 5 — handoff history -->
+      <div class="box acc" id="acc-history" data-open="false">
+        <button class="acc-btn" data-acc="acc-history">
+          <span>Handoff history</span><span class="chev">▸</span>
+        </button>
+        <div class="acc-body">
+          <div class="panel">
+            <h3>Handoff history</h3>
+            <div class="hist scroll" id="hist"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/github.js"></script>
+<script src="js/ams.js"></script>
+<script src="js/sprints.js"></script>
+<script src="js/handoffs.js"></script>
+<script src="js/render.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

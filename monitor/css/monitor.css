@@ -1,0 +1,149 @@
+/* AMS Agent Monitor — palette and proportions taken from the wireframe. */
+:root{
+  --paper:#ecebe7; --ink:#1f1f1f; --line:#3a3a3a; --mute:#7a7a76;
+  --fill:#dcdbd6; --fill2:#c9c8c2; --warn:#fff7c2; --warn-ink:#5a4a00;
+  --flash:#fff3a8;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);
+  font:14px/1.45 "Helvetica Neue",Helvetica,Arial,sans-serif}
+a{color:inherit}
+.box{border:1.5px solid var(--line);border-radius:4px;background:#fff}
+.lbl{font-size:11px;color:var(--mute)}
+.hidden{display:none !important}
+
+/* ---------- status bar (pin 1) ---------- */
+.bar{display:flex;align-items:center;gap:14px;padding:10px 16px;
+  border-bottom:2px solid var(--line);background:var(--fill);flex-wrap:wrap}
+.bar .title{font-weight:600}
+.bar .spacer{flex:1}
+.bar .ro{border:1.5px solid var(--line);border-radius:4px;padding:3px 8px;
+  font-size:11px;background:#fff;white-space:nowrap}
+.bar .pulse{display:inline-block;width:9px;height:9px;border-radius:50%;
+  background:var(--line);vertical-align:middle;margin-right:5px}
+.bar.stale{background:var(--warn);color:var(--warn-ink)}
+.bar.stale .pulse{background:#b58900}
+
+/* ---------- layout ---------- */
+.body{display:flex;align-items:flex-start}
+.main{flex:1;padding:16px;border-right:2px solid var(--line);min-width:0}
+.side{width:330px;flex:none;padding:16px;display:flex;flex-direction:column;gap:14px}
+
+/* ---------- board (pins 2-3) ---------- */
+.boardhead{display:flex;align-items:center;gap:16px;margin-bottom:4px;flex-wrap:wrap}
+.boardhead h2{margin:0;font-size:16px}
+.legend{display:flex;gap:12px;flex-wrap:wrap}
+.legend span{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--mute)}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;
+  background:var(--line);vertical-align:middle;flex:none}
+.dot.ring{background:#fff;border:1.5px solid var(--line)}
+.dot.half{background:linear-gradient(90deg,var(--line) 50%,#fff 50%);border:1.5px solid var(--line)}
+.dot.stale{background:var(--fill2);border:1.5px dotted var(--mute)}
+
+.sprint{display:flex;align-items:stretch;gap:10px;padding:10px 0;
+  border-top:1.5px dashed var(--fill2)}
+.sprint:first-of-type{border-top:0}
+.sprint .name{flex:none;width:170px;padding:8px 10px;font-weight:600;font-size:13px}
+.sprint .name small{display:block;font-weight:400;color:var(--mute);font-size:11px;margin-top:3px}
+.sprint.cur .name{background:var(--ink);color:#fff;border-color:var(--ink)}
+.sprint.cur .name small{color:#ccc}
+.stories{display:flex;gap:8px;flex:1;flex-wrap:wrap;min-width:0}
+.story{display:flex;align-items:center;gap:7px;padding:8px 10px;font-size:12px;
+  max-width:210px;min-width:0}
+.story .ttl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.story .sid{font-size:10px;color:var(--mute);flex:none}
+.story.planned{border-style:dashed;color:var(--mute)}
+.story.progress{border-width:2.5px}
+/* Legacy only: unchecked inside an accepted sprint. Spec §2.4 forbids this
+   going forward. Muted so it never reads as upcoming work. */
+.story.stale{border-style:dotted;color:var(--mute);background:var(--fill);opacity:.75}
+.check{flex:none;display:flex;align-items:center;padding:8px 12px;font-size:12px;white-space:nowrap}
+.check.pending{border-style:dashed;color:var(--mute)}
+.emptyrow{color:var(--mute);font-size:12px;padding:8px 0}
+
+/* ---------- side panels (pins 4-5) ---------- */
+.side h3{margin:0 0 8px;font-size:13px}
+.panel{padding:12px}
+.panel dt{font-size:11px;color:var(--mute);margin-top:10px}
+.panel dt:first-child{margin-top:0}
+.panel dd{margin:3px 0 0;font-size:12.5px}
+.panel dd.empty{color:var(--fill2)}
+.panel dl{margin:0}
+.panel .srcname{font-size:10px;color:var(--fill2);font-style:italic}
+.panel .md :is(h1,h2,h3,h4){font-size:13px;margin:8px 0 4px}
+.panel .md p{margin:4px 0}
+.panel .md ul,.panel .md ol{margin:4px 0;padding-left:18px}
+.panel .md code{background:var(--fill);padding:1px 3px;border-radius:3px;font-size:11.5px}
+.panel .md pre{background:var(--fill);padding:8px;border-radius:3px;overflow-x:auto}
+.panel .md pre code{background:none;padding:0}
+.panel .md table{border-collapse:collapse;font-size:11.5px;display:block;overflow-x:auto}
+.panel .md th,.panel .md td{border:1px solid var(--fill2);padding:3px 6px}
+.panel .md img{max-width:100%}
+.scroll{max-height:52vh;overflow-y:auto}
+.prompt{margin-top:10px;padding:8px;background:var(--warn);
+  color:var(--warn-ink);border-radius:3px;font-size:12px}
+.extras{margin-top:10px;border-top:1.5px dashed var(--fill2);padding-top:8px}
+.extras>.lbl{display:block;margin-bottom:4px}
+
+.hist{display:flex;flex-direction:column;font-size:12px}
+.hist button{display:flex;justify-content:space-between;gap:10px;width:100%;
+  padding:6px 4px;border:0;border-bottom:1px dashed var(--fill2);
+  background:none;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.hist button:last-child{border-bottom:0}
+.hist button:hover{background:var(--fill)}
+.hist button[aria-current="true"]{font-weight:600;background:var(--fill)}
+.hist .when{color:var(--mute);flex:none}
+.hist .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.backlatest{margin-bottom:8px;font-size:11px}
+
+/* ---------- states ---------- */
+.state{max-width:70ch;margin:12vh auto;padding:24px;text-align:left}
+.state h2{margin:0 0 10px;font-size:18px}
+.state p{margin:8px 0;color:var(--mute)}
+.state code{background:var(--fill);padding:2px 5px;border-radius:3px;color:var(--ink)}
+.state ul{color:var(--mute)}
+.inline-note{margin:10px 0;padding:8px 10px;background:var(--warn);
+  color:var(--warn-ink);border-radius:3px;font-size:12px}
+
+/* ---------- change indication ---------- */
+@keyframes flash{from{background:var(--flash)}to{background:transparent}}
+.changed{animation:flash 2.2s ease-out}
+@media (prefers-reduced-motion:reduce){
+  .changed{animation:none;box-shadow:0 0 0 2px var(--flash)}
+}
+
+/* ---------- phone (pins 6-8) ---------- */
+.tabs,.mcheck,.acc-btn{display:none}
+@media (max-width:480px){
+  .body{display:block}
+  .main{border-right:0;border-bottom:2px solid var(--line);padding:12px}
+  .side{width:auto;padding:12px;gap:10px}
+  .bar{gap:8px 12px;padding:8px 12px;font-size:12px}
+  .bar .spacer{display:none}
+  .bar .title{width:100%}
+
+  /* Board becomes a picker over one sprint's stories. */
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+  .tabs button{padding:5px 10px;font:inherit;font-size:12px;cursor:pointer;
+    border:1.5px solid var(--line);border-radius:4px;background:#fff}
+  .tabs button[aria-selected="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .sprint{display:none;border-top:0;padding:0}
+  .sprint.shown{display:block}
+  .sprint .name{width:auto;margin-bottom:8px}
+  .stories{flex-direction:column;gap:6px}
+  .story{max-width:none;width:100%}
+  .check{display:none}
+  .mcheck{display:block;margin-top:8px;padding:8px 10px;font-size:12px;text-align:center}
+  .mcheck.pending{border-style:dashed;color:var(--mute)}
+
+  /* Side panels become accordions. */
+  .acc-btn{display:flex;justify-content:space-between;width:100%;padding:10px 12px;
+    border:0;background:none;font:inherit;font-weight:600;font-size:13px;
+    cursor:pointer;text-align:left}
+  .acc-btn .chev{color:var(--mute)}
+  .side h3{display:none}
+  .acc-body{padding:0 12px 12px}
+  .acc[data-open="false"] .acc-body{display:none}
+  .panel{padding:0}
+  .scroll{max-height:none}
+}
