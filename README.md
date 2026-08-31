@@ -90,9 +90,9 @@ No build step and no framework. One CDN dependency, `marked`, pinned. Open
 
 ## The format it expects
 
-Canonical syntax is in [`../spec/ams-monitor-format.md`](../spec/ams-monitor-format.md);
+Canonical syntax is in [`spec/ams-monitor-format.md`](spec/ams-monitor-format.md);
 what "finished" means for v1 is in
-[`../spec/definition-of-done.md`](../spec/definition-of-done.md).
+[`spec/definition-of-done.md`](spec/definition-of-done.md).
 
 The parser is canonical-first with a documented tolerance layer for files
 written before that spec existed — mixed heading casings, decorated acceptance
