@@ -100,6 +100,46 @@ var AMSSprints = (function () {
       .filter(function (n, i, a) { return n && a.indexOf(n) === i; });
   }
 
+  /* Sections written as a bold label on its own line followed by a list:
+
+       **Scope:**
+       - Static page at `/r/<id>` that fetches the record
+       - A record with outcome != ok renders as a failed check
+
+       **Acceptance criteria:**
+       - [x] The same permalink renders identically in a private window
+
+     Returns [{label, items:[{text, done|null}]}]. A checkbox makes `done` a
+     boolean; a plain bullet leaves it null, so acceptance criteria can be shown
+     as a checklist and scope as prose. */
+  function parseListSections(block) {
+    var lines = String(block || '').split(/\r?\n/);
+    var out = [], cur = null;
+
+    lines.forEach(function (line) {
+      var head = /^\*\*([A-Za-z][A-Za-z ]*?):\*\*\s*$/.exec(line);
+      if (head) { cur = { label: head[1].trim(), items: [] }; out.push(cur); return; }
+      if (!cur) return;
+      var item = /^\s*[-*]\s+(?:\[([ xX])\]\s*)?(.+?)\s*$/.exec(line);
+      if (item) {
+        cur.items.push({
+          text: item[2],
+          done: item[1] === undefined ? null : item[1].toLowerCase() === 'x'
+        });
+        return;
+      }
+      /* A wrapped continuation line belongs to the item above it. */
+      if (/^\s+\S/.test(line) && cur.items.length) {
+        cur.items[cur.items.length - 1].text += ' ' + line.trim();
+        return;
+      }
+      if (line.trim() === '') return;
+      cur = null;                      /* anything else ends the section */
+    });
+
+    return out.filter(function (s) { return s.items.length; });
+  }
+
   /* Split the file at story headings so each story keeps its own body: the
      fields line, Scope, and the acceptance-criteria checklist. */
   function parseStories(body) {
@@ -115,6 +155,7 @@ var AMSSprints = (function () {
         owners: owners, owner: owners[0] || null, ownerRaw: fields.owner || null,
         model: fields.model || null, size: fields.size || null,
         dependsOn: fields.depends_on || null,
+        sections: parseListSections(block.slice(m[0].length)),
         body: block.slice(m[0].length).trim()
       });
     });
@@ -179,6 +220,7 @@ var AMSSprints = (function () {
     build: build, parseFile: parseFile, isSprintFile: isSprintFile,
     compareIds: compareIds, parseTitle: parseTitle,
     parseFields: parseFields, parseOwners: parseOwners,
+    parseListSections: parseListSections,
     parseAcceptance: parseAcceptance, parseStories: parseStories,
     SPRINT_FILE: SPRINT_FILE
   };

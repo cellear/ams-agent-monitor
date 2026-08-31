@@ -42,16 +42,33 @@ var AMSHandoffs = (function () {
      this the label reads "s2 5 result page". */
   var ID_HEAD = /^([sf])(\d+[a-z]*)$/i;
 
+  /* The story id embedded in a handoff filename, or null. 13 of the 19
+     factcheck-site handoffs name one, which is what links a story to the
+     handoff written about it. */
+  function storyIdFromName(name) {
+    var m = FILE_RE.exec(name);
+    if (!m) return null;
+    var parts = m[4].split('-');
+    var head = ID_HEAD.exec(parts[0] || '');
+    if (head && /^([0-9]+|r)$/i.test(parts[1] || '')) {
+      return (head[1] + head[2]).toUpperCase() + '-' + parts[1].toUpperCase();
+    }
+    return null;
+  }
+
+  function agentFromName(name) {
+    var m = FILE_RE.exec(name);
+    if (!m) return null;
+    var parts = m[4].split('-');
+    return parts.length > 1 ? parts[parts.length - 1] : null;
+  }
+
   function labelFromName(name) {
     var m = FILE_RE.exec(name);
     if (!m) return name.replace(/\.md$/, '');
     var parts = m[4].split('-');
-    var id = null;
-    var head = ID_HEAD.exec(parts[0] || '');
-    if (head && /^([0-9]+|r)$/i.test(parts[1] || '')) {
-      id = (head[1] + head[2]).toUpperCase() + '-' + parts[1].toUpperCase();
-      parts = parts.slice(2);
-    }
+    var id = storyIdFromName(name);
+    if (id) parts = parts.slice(2);
     var agent = parts.length > 1 ? parts.pop() : null;
     var slug = parts.join(' ');
     return [id, slug, agent].filter(Boolean).join(' · ');
@@ -120,6 +137,7 @@ var AMSHandoffs = (function () {
   return {
     parse: parse, sortIndex: sortIndex, isHandoffFile: isHandoffFile,
     bucketFor: bucketFor, dateFromName: dateFromName, labelFromName: labelFromName,
+    storyIdFromName: storyIdFromName, agentFromName: agentFromName,
     SECTIONS: SECTIONS
   };
 })();

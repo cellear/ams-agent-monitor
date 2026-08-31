@@ -135,11 +135,9 @@ var AMSRender = (function () {
     var mark = el('span', 'mark', MARK[st.state] || '');
     n.appendChild(mark);
 
-    var who = st.owners && st.owners.length ? st.owners.join(' and ') : null;
-    n.title = st.id + ' · ' + st.title +
-      (who ? '\n' + who : '') +
-      (st.model ? ' · ' + st.model : '') +
-      '\n' + STATE_LABEL[st.state];
+    /* No title attribute: the popup replaces it, and both together means the
+       browser tooltip fights the panel a second later. */
+    n.tabIndex = 0;
     return n;
   }
 
@@ -190,6 +188,129 @@ var AMSRender = (function () {
       b.dataset.sprint = s.id;
       tabs.appendChild(b);
     });
+  }
+
+  /* ---------- story popup ---------- */
+
+  /* Fields are a list, not hand-placed markup, so adding or dropping one is a
+     line here rather than a layout change. Anything absent is skipped. */
+  var POPUP_FIELDS = [
+    { label: 'Owner',      get: function (st) { return st.owners && st.owners.length ? st.owners.join(' and ') : null; } },
+    { label: 'Model',      get: function (st) { return st.model; },      mono: true },
+    { label: 'Size',       get: function (st) { return st.size; } },
+    { label: 'Depends on', get: function (st) { return st.dependsOn; } }
+  ];
+
+  /* Story text is markdown, so `code` and **bold** would otherwise show their
+     own punctuation. Inline only — a list item is not the place for block
+     elements — with a plain-text fallback if the CDN renderer is unavailable. */
+  function inlineMarkdown(node, text) {
+    if (window.marked && typeof window.marked.parseInline === 'function') {
+      var box = el('span');
+      try {
+        box.innerHTML = window.marked.parseInline(String(text));
+        box.querySelectorAll('script,img,iframe').forEach(function (n) { n.remove(); });
+        box.querySelectorAll('a[href]').forEach(function (a) {
+          a.target = '_blank'; a.rel = 'noopener noreferrer';
+        });
+        node.appendChild(box);
+        return node;
+      } catch (e) { /* fall through to text */ }
+    }
+    node.appendChild(document.createTextNode(String(text)));
+    return node;
+  }
+
+  var popupEl = null, popupTimer = null, popupFor = null;
+
+  function ensurePopup() {
+    if (popupEl) return popupEl;
+    popupEl = el('div', 'storypop hidden');
+    /* On the body, so a card near the edge of the board is not clipped by the
+       scrolling containers it sits inside. */
+    document.body.appendChild(popupEl);
+    popupEl.addEventListener('mouseenter', function () { clearTimeout(popupTimer); });
+    popupEl.addEventListener('mouseleave', hidePopup);
+    return popupEl;
+  }
+
+  function buildPopup(st, colours, handoffs) {
+    var box = el('div');
+
+    var head = el('div', 'storypop-head');
+    head.appendChild(el('span', 'storypop-id', st.id));
+    head.appendChild(el('span', 'storypop-title', st.title));
+    box.appendChild(head);
+
+    var badge = el('div', 'storypop-state ' + st.state, STATE_LABEL[st.state]);
+    var c = colours && st.owner ? colours[st.owner] : null;
+    if (c) { badge.style.borderLeft = '4px solid ' + c.edge; }
+    box.appendChild(badge);
+
+    var dl = el('dl', 'storypop-fields');
+    POPUP_FIELDS.forEach(function (f) {
+      var v = f.get(st);
+      if (!v) return;
+      dl.appendChild(el('dt', null, f.label));
+      dl.appendChild(el('dd', f.mono ? 'mono' : null, v));
+    });
+    if (dl.children.length) box.appendChild(dl);
+
+    (st.sections || []).forEach(function (sec) {
+      box.appendChild(el('div', 'storypop-label', sec.label));
+      var ul = el('ul', 'storypop-list');
+      sec.items.forEach(function (item) {
+        var li = el('li', item.done === null ? null : (item.done ? 'ticked' : 'unticked'));
+        if (item.done !== null) li.appendChild(el('span', 'tick', item.done ? '\u2713' : '\u25CB'));
+        inlineMarkdown(li, item.text);
+        ul.appendChild(li);
+      });
+      box.appendChild(ul);
+    });
+
+    if (handoffs && handoffs.length) {
+      box.appendChild(el('div', 'storypop-label', handoffs.length > 1 ? 'Handoffs' : 'Handoff'));
+      var hl = el('ul', 'storypop-list');
+      handoffs.forEach(function (h) {
+        hl.appendChild(el('li', null, (h.agent ? h.agent + ' \u00B7 ' : '') +
+          (h.commit ? relTime(h.commit) : (h.date || ''))));
+      });
+      box.appendChild(hl);
+    }
+    return box;
+  }
+
+  /* Placed beside the card, flipped or nudged so it stays on screen. */
+  function positionPopup(card) {
+    var r = card.getBoundingClientRect();
+    var p = popupEl.getBoundingClientRect();
+    var gap = 8;
+    var left = r.right + gap;
+    if (left + p.width > window.innerWidth - 8) left = r.left - p.width - gap;
+    if (left < 8) left = Math.max(8, Math.min(r.left, window.innerWidth - p.width - 8));
+    var top = r.top + window.scrollY - 4;
+    if (top + p.height > window.scrollY + window.innerHeight - 8) {
+      top = window.scrollY + window.innerHeight - p.height - 8;
+    }
+    if (top < window.scrollY + 8) top = window.scrollY + 8;
+    popupEl.style.left = Math.round(left) + 'px';
+    popupEl.style.top = Math.round(top) + 'px';
+  }
+
+  function showPopup(card, st, colours, handoffs) {
+    var pop = ensurePopup();
+    if (popupFor === st.id && !pop.classList.contains('hidden')) return;
+    popupFor = st.id;
+    clear(pop);
+    pop.appendChild(buildPopup(st, colours, handoffs));
+    pop.classList.remove('hidden');
+    positionPopup(card);
+  }
+
+  function hidePopup() {
+    clearTimeout(popupTimer);
+    popupFor = null;
+    if (popupEl) popupEl.classList.add('hidden');
   }
 
   /* Who is on this board, and in what colour. */
@@ -362,6 +483,7 @@ var AMSRender = (function () {
   return {
     statusBar: statusBar, tokenNote: tokenNote, board: board, handoff: handoff, history: history,
     state: state, showApp: showApp, p: p, el: el, flash: flash, repoForm: repoForm,
+    showPopup: showPopup, hidePopup: hidePopup, POPUP_FIELDS: POPUP_FIELDS,
     relTime: relTime, untilTime: untilTime, markdown: markdown
   };
 })();

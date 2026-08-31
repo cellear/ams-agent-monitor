@@ -625,3 +625,36 @@ free with the `Owner` line.
 
 **Deferred by decision:** persistent repo switcher, tap-to-expand on the phone,
 darker-fill option with light text, other git hosts.
+
+---
+
+## v3 step 1: story hover popup — built
+
+All fields come from data already fetched: zero extra API calls.
+
+- `sprints.js` gained `parseListSections`, which reads the `**Scope:**` and
+  `**Acceptance criteria:**` blocks under a story heading, including wrapped
+  continuation lines. 28/28 factcheck-site stories carry both.
+- `handoffs.js` gained `storyIdFromName` / `agentFromName`, linking a handoff to
+  the story it was written about — 13 of 19 filenames name one, and `S1-R` has
+  two, so the relation is one-to-many.
+- The panel is built from a `POPUP_FIELDS` list rather than hand-placed markup,
+  so adding or dropping a field is one line.
+
+Judgement calls:
+
+- **Inline markdown is rendered** in scope and criteria text. Left raw, real
+  content showed literal `**bold**` and backticks, which looked broken. Inline
+  only, never block, with a plain-text fallback if the CDN renderer is missing.
+- **The panel is appended to `document.body`**, not the card, so a card at the
+  edge of the board is not clipped by the containers it sits in. It flips to the
+  card's left near the right edge.
+- **The `title` attribute was removed** from cards. Keeping both meant the
+  browser's own tooltip appeared a second after the panel, fighting it.
+- **Cards are focusable and the panel opens on keyboard focus**, Escape closes
+  it. Beyond what was asked, but the popup is now the only route to the story
+  detail, so a mouse-only route would have been the wrong trade.
+- **Gated on `(hover: hover)`, not viewport width.** A narrow desktop window
+  still has a mouse and still gets the panel; a touch device gets nothing, which
+  is where the backlogged tap-to-expand belongs. The panel is capped at
+  `100vw - 16px` so a narrow window does not overflow.

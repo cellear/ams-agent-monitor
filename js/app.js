@@ -29,6 +29,8 @@ var AMSApp = (function () {
       .map(function (e) {
         return { name: e.name, path: e.path, sha: e.sha,
                  date: AMSHandoffs.dateFromName(e.name),
+                 storyId: AMSHandoffs.storyIdFromName(e.name),
+                 agent: AMSHandoffs.agentFromName(e.name),
                  label: AMSHandoffs.labelFromName(e.name), commit: e.commit || null };
       });
   }
@@ -354,6 +356,66 @@ var AMSApp = (function () {
     document.getElementById('ho-back').addEventListener('click', function () {
       state.selectedFile = null;
       paintAll();
+    });
+
+    /* Story popup. Delegated, so it survives every board redraw. Desktop only:
+       a hover panel has no meaning on a touch screen, where tap-to-expand is
+       the backlog answer. */
+    var board = document.getElementById('board');
+    var HOVER_DELAY = 140;      /* long enough not to flash while crossing cards */
+    var hoverTimer = null;
+
+    function storyUnder(target) {
+      var card = target.closest ? target.closest('.story[data-story]') : null;
+      if (!card || !state.board) return null;
+      var st = null;
+      state.board.sprints.some(function (sp) {
+        return sp.stories.some(function (x) {
+          if (x.id === card.dataset.story) { st = x; return true; }
+          return false;
+        });
+      });
+      return st ? { card: card, story: st } : null;
+    }
+
+    function colourMap() {
+      var m = {};
+      if (state.board) {
+        AMSAgents.roster(state.board.sprints).forEach(function (r) { m[r.name] = r.colour; });
+      }
+      return m;
+    }
+
+    function handoffsFor(id) {
+      return state.handoffIndex.filter(function (h) { return h.storyId === id; });
+    }
+
+    function openFor(hit, immediate) {
+      clearTimeout(hoverTimer);
+      var run = function () { R.showPopup(hit.card, hit.story, colourMap(), handoffsFor(hit.story.id)); };
+      if (immediate) run(); else hoverTimer = setTimeout(run, HOVER_DELAY);
+    }
+
+    if (window.matchMedia('(hover: hover)').matches) {
+      board.addEventListener('mouseover', function (e) {
+        var hit = storyUnder(e.target);
+        if (hit) openFor(hit);
+      });
+      board.addEventListener('mouseout', function (e) {
+        if (!storyUnder(e.target)) return;
+        clearTimeout(hoverTimer);
+        hoverTimer = setTimeout(R.hidePopup, HOVER_DELAY);
+      });
+    }
+    /* Keyboard reaches the same panel: the cards are focusable. */
+    board.addEventListener('focusin', function (e) {
+      var hit = storyUnder(e.target);
+      if (hit) openFor(hit, true);
+    });
+    board.addEventListener('focusout', R.hidePopup);
+    window.addEventListener('scroll', R.hidePopup, { passive: true });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') R.hidePopup();
     });
 
     document.getElementById('tabs').addEventListener('click', function (e) {
