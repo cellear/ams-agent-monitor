@@ -69,7 +69,14 @@ a{color:inherit}
 .story{display:flex;flex-direction:column;align-items:center;justify-content:space-between;
   aspect-ratio:1;padding:9px 7px 7px;font-size:12px;text-align:center;min-width:0;
   background:#fff;transition:box-shadow .12s}
+.story-head{display:flex;justify-content:space-between;align-items:baseline;
+  gap:6px;width:100%;flex:none}
 .story .sid{font-size:10px;color:var(--mute);flex:none;letter-spacing:.02em}
+/* The agent name, shown on every card so a run of planned work is readable. */
+.story .who{font-size:10px;color:var(--mute);min-width:0;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.story.done .who,.story.progress .who{color:#4a4a46}
+.story.stale .who{color:var(--mute);font-weight:400}
 /* Wrapped and clamped: a long title cuts off rather than growing the card.
    The clamp has to live on a child, not on .ttl itself — a flex item has its
    display blockified, so -webkit-box on it is silently ignored and the text
@@ -231,6 +238,9 @@ a{color:inherit}
     padding:9px 10px;text-align:left}
   .story .ttl{flex:1;margin:0;justify-content:flex-start}
   .story .ttl b{-webkit-line-clamp:2;text-align:left}
+  /* On the phone the card is a row, so the header stacks beside the title. */
+  .story-head{width:auto;flex-direction:column;align-items:flex-start;gap:1px;
+    flex:none;min-width:44px}
   .story .mark{order:-1}
   .check{display:none}
   .mcheck{display:block;margin-top:8px;padding:8px 10px;font-size:12px;text-align:center}

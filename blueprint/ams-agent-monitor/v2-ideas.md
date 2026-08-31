@@ -658,3 +658,25 @@ Judgement calls:
   still has a mouse and still gets the panel; a touch device gets nothing, which
   is where the backlogged tap-to-expand belongs. The panel is capped at
   `100vw - 16px` so a narrow window does not overflow.
+
+---
+
+## v3 step 1a: agent name on every card
+
+Raised by Luke after seeing the coloured board: colour alone identifies the
+agent only on done and in-progress cards. Planned cards are white, so a run of
+upcoming work by one agent is invisible — and his example is the useful one,
+"know if a streak of stories is going to be handled by the same agent". He also
+noted the colours alone can be ambiguous even where they are present.
+
+**Built:** the story id and the agent share the card's top row. The name shows
+on every card regardless of state. Where the card is not already the agent's
+colour — planned and dropped — the name is tinted with that agent's edge colour,
+so a streak stays scannable without filling the card and losing the
+progress-at-a-glance effect.
+
+Multi-agent stories abbreviate to `Nadia +1`, with both names in the tooltip and
+in the popup.
+
+Visible immediately in the fixture: sprint 3's planned run reads Sandy, Cody,
+Cody, Cody, Sandy, Sandy — the streak Luke asked to be able to see.

@@ -128,7 +128,23 @@ var AMSRender = (function () {
       n.style.borderColor = c.edge;
     }
 
-    n.appendChild(el('span', 'sid', st.id));
+    /* Id and agent share the top row. The agent is on every card, not only the
+       coloured ones: a planned story has no fill, so without a name there is no
+       way to see that the next four are all Sandy's. */
+    var head = el('span', 'story-head');
+    head.appendChild(el('span', 'sid', st.id));
+    if (st.owners && st.owners.length) {
+      var who = el('span', 'who', st.owners.length > 1
+        ? st.owners[0] + ' +' + (st.owners.length - 1)
+        : st.owners[0]);
+      /* Tint only where the card itself is not already the agent's colour, so
+         a run of planned stories is still scannable by eye. */
+      if (c && st.state !== 'done' && st.state !== 'progress') who.style.color = c.edge;
+      who.title = st.owners.join(' and ');
+      head.appendChild(who);
+    }
+    n.appendChild(head);
+
     var ttl = el('span', 'ttl');
     ttl.appendChild(el('b', null, st.title));
     n.appendChild(ttl);
