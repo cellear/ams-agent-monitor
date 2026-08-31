@@ -66,6 +66,23 @@ Booting costs 6 requests; a quiet tick costs 1. A fully quiet hour uses 36 of
 If the limit is reached anyway, the page keeps the last good data, says so, and
 names when the limit resets.
 
+## Checks
+
+Open `checks.html`. It runs 175 checks and prints pass/fail — no build step, no
+test runner, no dependency, nothing over the network beyond the bundled fixture.
+
+Two layers. Unit checks exercise the parsers directly, since they are pure
+functions over strings. Page checks drive this same `index.html` with
+`?fixtures=1` inside a hidden frame, so there is no second copy of the page to
+drift out of date, and the board, popup, phone layout and landing form are all
+checked as they actually ship.
+
+Every regression case is a bug that really happened while building this, not a
+hypothetical — an `## Acceptance` section at the end of a file reading as
+pending, the kit's `## Example` config table overriding the real one, a story
+id like `F1-1` being dropped, the current sprint resolving to the last one
+rather than the one being worked. The comment above each says which.
+
 ## Files
 
 ```
@@ -78,6 +95,9 @@ js/sprints.js           sprint files → board model
 js/handoffs.js          handoff files → five-section model
 js/render.js            model → DOM
 js/app.js               boot, poll loop, change detection, selection
+checks.html             the check runner — open it in a browser
+js/checks.js            unit checks over the parsers
+js/checks-page.js       page checks, driving index.html in a frame
 fixtures/               frozen snapshot used by ?fixtures=1
 ```
 

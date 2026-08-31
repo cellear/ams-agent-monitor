@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AMS Agent Monitor — checks</title>
+<link rel="stylesheet" href="css/monitor.css?v=202608311547">
+<style>
+  body{padding:24px;max-width:900px;margin:0 auto}
+  h1{font-size:19px;margin:0 0 4px}
+  .lede{color:var(--mute);font-size:12.5px;margin:0 0 18px;max-width:68ch}
+  .summary{display:flex;align-items:baseline;gap:14px;padding:12px 14px;border-radius:5px;
+    border:1.5px solid var(--line);background:#fff;margin-bottom:18px;flex-wrap:wrap}
+  .summary .count{font-size:22px;font-weight:600}
+  .summary.good{background:#e8f3e6;border-color:#3f7d43}
+  .summary.bad{background:#fbe4e4;border-color:#a33}
+  .suite{margin-bottom:14px;border:1.5px solid var(--line);border-radius:5px;
+    background:#fff;overflow:hidden}
+  .suite h2{margin:0;padding:8px 12px;font-size:12.5px;background:var(--fill);
+    border-bottom:1.5px solid var(--line);display:flex;justify-content:space-between;gap:10px}
+  .suite h2 .tally{color:var(--mute);font-weight:400;font-size:11px}
+  .suite.failing h2{background:#fbe4e4}
+  ul.checks{list-style:none;margin:0;padding:6px 12px 10px}
+  ul.checks li{display:flex;gap:8px;padding:2px 0;font-size:12px;align-items:baseline}
+  ul.checks .mk{flex:none;width:13px;text-align:center;font-weight:600}
+  ul.checks li.pass .mk{color:#3f7d43}
+  ul.checks li.fail{color:#a33}
+  ul.checks li.fail .mk{color:#a33}
+  .detail{display:block;color:#a33;font-size:11px;font-family:ui-monospace,Menlo,monospace;
+    margin-top:2px}
+  .filters{margin-bottom:14px;display:flex;gap:8px;align-items:center}
+  #probes{position:fixed;left:-10000px;top:0;width:1200px;height:900px}
+  #probes iframe{width:1200px;height:900px;border:0;display:block}
+</style>
+</head>
+<body>
+
+<h1>AMS Agent Monitor — checks</h1>
+<p class="lede">
+  Unit checks exercise the parsers directly. Page checks drive the real
+  <code>index.html</code> with <code>?fixtures=1</code> in a hidden frame, so there is no second
+  copy of the page to drift out of date. Every regression case is a bug that actually
+  occurred during the build; the comments in <code>js/checks.js</code> say which.
+  Nothing here touches the network beyond the bundled fixture.
+</p>
+
+<div class="summary" id="summary"><span class="count">…</span><span>running</span></div>
+<div class="filters">
+  <button class="barbtn" id="only-failures">Show failures only</button>
+  <button class="barbtn" id="rerun">Run again</button>
+</div>
+<div id="results"></div>
+<div id="probes"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="js/config.js?v=202608311547"></script>
+<script src="js/agents.js?v=202608311547"></script>
+<script src="js/github.js?v=202608311547"></script>
+<script src="js/ams.js?v=202608311547"></script>
+<script src="js/sprints.js?v=202608311547"></script>
+<script src="js/handoffs.js?v=202608311547"></script>
+<script src="js/checks.js?v=202608311547"></script>
+<script src="js/checks-page.js?v=202608311547"></script>
+<script src="js/checks-run.js?v=202608311547"></script>
+</body>
+</html>
