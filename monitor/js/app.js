@@ -240,24 +240,54 @@ var AMSApp = (function () {
 
   /* ---------- states ---------- */
 
-  function showLanding() {
+  /* The landing screen is a form, not instructions. Opening index.html straight
+     from the Finder is a normal way in, and it should not require editing a
+     query string by hand. */
+  function showLanding(prefill, error) {
     R.state('AMS Agent Monitor', [
       R.p('A read-only window on any GitHub repository that uses <strong>AMS</strong> ' +
-          'as its methodology. It reads sprint and handoff files and draws them as a board. ' +
-          'It never writes anything.'),
-      R.p('Add a <code>repo</code> parameter to the URL:'),
-      R.p('<code>' + location.pathname + '?repo=owner/name</code>'),
-      R.p('For example: <a href="?repo=cellear/factcheck-site">?repo=cellear/factcheck-site</a>'),
-      R.p('Or view the bundled snapshot with no network access: ' +
-          '<a href="?fixtures=1">?fixtures=1</a>')
+          'as its methodology. It reads that project\u2019s sprint and handoff files and ' +
+          'draws them as a board. It never writes anything.'),
+      R.repoForm({
+        value: prefill || '',
+        error: error || null,
+        onSubmit: function (raw, showError) {
+          var parsed = AMSConfig.parseRepoInput(raw);
+          if (!parsed.ok) { showError(repoInputError(parsed)); return; }
+          /* Navigate rather than boot in place, so the resulting board has a
+             URL that can be bookmarked and shared. */
+          /* Not encodeURIComponent: it escapes the slash to %2F, and these URLs
+             get shared. The value is already validated against REPO_RE, so the
+             only characters in it are safe in a query string. */
+          window.location.search = '?repo=' + parsed.repo;
+        }
+      }),
+      R.p('Try <a href="?repo=cellear/factcheck-site">cellear/factcheck-site</a>, ' +
+          'or open the bundled snapshot with no network at all: ' +
+          '<a href="?fixtures=1">the example board</a>.')
     ]);
   }
 
-  function showBadRepo(repo) {
-    R.state('That does not look like a repository', [
-      R.p('<code>' + escapeHtml(repo) + '</code> is not in <code>owner/name</code> form.'),
-      R.p('Try <a href="?repo=cellear/factcheck-site">?repo=cellear/factcheck-site</a>.')
-    ]);
+  /* One place that turns a parse failure into something a person can act on. */
+  function repoInputError(parsed) {
+    switch (parsed.reason) {
+      case 'empty':
+        return 'Enter a repository first.';
+      case 'unsupported-host':
+        return parsed.host + ' is not supported yet \u2014 this reads GitHub only. ' +
+               'The address looks right otherwise.';
+      case 'unknown-host':
+        return 'Nothing is known about ' + parsed.host + '. Paste a github.com address, ' +
+               'or just owner/name.';
+      default:
+        return 'That does not look like a repository. Use owner/name, or paste the ' +
+               'GitHub address of one.';
+    }
+  }
+
+  function showBadRepo(repo, parsed) {
+    showLanding(repo, parsed ? repoInputError(parsed)
+                             : 'That does not look like a repository.');
   }
 
   function showNotAms(res) {
@@ -392,7 +422,7 @@ var AMSApp = (function () {
       });
     }
     if (cfg.reason === 'no-repo') return showLanding();
-    if (cfg.reason === 'bad-repo') return showBadRepo(cfg.repo);
+    if (cfg.reason === 'bad-repo') return showBadRepo(cfg.repo, cfg.parsed);
 
     state.repo = cfg.repo;
     return bootLive();

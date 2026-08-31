@@ -153,6 +153,20 @@ a{color:inherit}
 .inline-note{margin:10px 0;padding:8px 10px;background:var(--warn);
   color:var(--warn-ink);border-radius:3px;font-size:12px}
 
+/* Landing-screen repo entry. */
+.repoform{margin:18px 0 14px}
+.repoform label{display:block;font-size:11px;color:var(--mute);margin-bottom:5px}
+.repoform-row{display:flex;gap:8px;flex-wrap:wrap}
+.repoform input{flex:1;min-width:240px;font:inherit;font-size:14px;padding:8px 10px;
+  border:1.5px solid var(--line);border-radius:4px;background:#fff;color:var(--ink)}
+.repoform input:focus{outline:2px solid var(--line);outline-offset:1px}
+.repoform input::placeholder{color:var(--fill2)}
+.repoform .primary{font:inherit;font-size:13px;padding:8px 16px;cursor:pointer;
+  border:1.5px solid var(--ink);border-radius:4px;background:var(--ink);color:#fff}
+.repoform .primary:hover{background:#000}
+.repoform-error{margin-top:7px;padding:6px 9px;font-size:12px;border-radius:3px;
+  background:var(--warn);color:var(--warn-ink)}
+
 /* ---------- change indication ---------- */
 @keyframes flash{from{background:var(--flash)}to{background:transparent}}
 .changed{animation:flash 2.2s ease-out}

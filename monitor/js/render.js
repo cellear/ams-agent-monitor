@@ -302,6 +302,53 @@ var AMSRender = (function () {
   }
   function p(html) { var n = el('p'); n.innerHTML = html; return n; }
 
+  /* Repo entry for the landing screen. Accepts owner/name or a pasted GitHub
+     address; validation and navigation are the caller's, so this stays a view. */
+  function repoForm(opts) {
+    var form = el('form', 'repoform');
+    form.setAttribute('novalidate', 'novalidate');
+
+    var label = el('label', null, 'Repository');
+    label.setAttribute('for', 'repo-input');
+    form.appendChild(label);
+
+    var row = el('div', 'repoform-row');
+    var input = el('input');
+    input.id = 'repo-input';
+    input.type = 'text';
+    input.value = opts.value || '';
+    input.placeholder = 'owner/name  —  or  https://github.com/owner/name';
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    row.appendChild(input);
+
+    var go = el('button', 'primary', 'Watch it');
+    go.type = 'submit';
+    row.appendChild(go);
+    form.appendChild(row);
+
+    var err = el('div', 'repoform-error');
+    err.setAttribute('role', 'alert');
+    if (opts.error) err.textContent = opts.error;
+    else err.classList.add('hidden');
+    form.appendChild(err);
+
+    function showError(message) {
+      err.textContent = message;
+      err.classList.remove('hidden');
+      input.focus();
+      input.select();
+    }
+    input.addEventListener('input', function () { err.classList.add('hidden'); });
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      opts.onSubmit(input.value, showError);
+    });
+
+    setTimeout(function () { input.focus(); }, 0);
+    return form;
+  }
+
   function flash(ids) {
     ids.forEach(function (id) {
       var n = $(id);
@@ -314,7 +361,7 @@ var AMSRender = (function () {
 
   return {
     statusBar: statusBar, tokenNote: tokenNote, board: board, handoff: handoff, history: history,
-    state: state, showApp: showApp, p: p, el: el, flash: flash,
+    state: state, showApp: showApp, p: p, el: el, flash: flash, repoForm: repoForm,
     relTime: relTime, untilTime: untilTime, markdown: markdown
   };
 })();
