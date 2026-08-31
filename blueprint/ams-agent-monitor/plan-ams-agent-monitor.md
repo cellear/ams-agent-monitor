@@ -39,7 +39,8 @@
 
 ### Polling and change indication
 - Fixed ~2-minute poll, unauthenticated, no token support in v1.
-- Conditional requests (ETag / If-None-Match) on every poll — GitHub 304s don't count against the 60/hour budget, so steady-state polling is nearly free and the budget is spent only when something actually changed.
+- **Corrected during the build:** an unauthenticated 304 *does* cost a unit of the 60/hour budget. Measured against the live API — three conditional requests to an unchanged listing cost three units. The original plan assumed 304s were free, which would have put a two-listing poll at exactly 60 calls/hour with nothing left for the boot sequence.
+- So each tick asks one question: `GET /repos/{repo}/commits?per_page=1`. If the head sha has not moved, nothing else is fetched. Only when it moves are the sprint and handoff listings re-read. Measured cost: 6 calls to boot, 1 per quiet tick — 36 of 60 in a fully quiet hour, leaving headroom for change bursts.
 - When a poll brings new data: changed panels get a brief highlight, and the status bar notes what changed ("new handoff 40s ago") until the user interacts.
 
 ### Phone layout (pins 6–8)

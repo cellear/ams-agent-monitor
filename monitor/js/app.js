@@ -10,7 +10,7 @@ var AMSApp = (function () {
     board: null, handoffIndex: [], handoffCache: {},
     selectedFile: null, selectedSprint: null,
     lastPolled: null, lastGood: null, latestCommit: null,
-    stale: false, note: '', timer: null, booted: false
+    stale: false, note: '', timer: null, booted: false, headSha: null
   };
 
   /* ---------- shared shaping ---------- */
@@ -140,9 +140,11 @@ var AMSApp = (function () {
         return Promise.all([
           loadHandoffBody(newest),
           newest ? AMSGitHub.lastCommit(state.repo, newest.path).catch(function () { return null; })
-                 : Promise.resolve(null)
+                 : Promise.resolve(null),
+          AMSGitHub.headCommit(state.repo).catch(function () { return null; })
         ]).then(function (x) {
           if (x[1]) { state.latestCommit = x[1].date; if (newest) newest.commit = x[1].date; }
+          if (x[2]) state.headSha = x[2].sha;
           state.lastPolled = new Date().toISOString();
           state.lastGood = state.lastPolled;
           state.booted = true;
@@ -160,23 +162,41 @@ var AMSApp = (function () {
     state.timer = setTimeout(poll, POLL_MS);
   }
 
+  /* One call per tick. Polling both directory listings cost two units every
+     time — and since an unauthenticated 304 still costs a unit, 30 ticks an
+     hour would have consumed the entire 60/hour budget with nothing left for
+     the boot sequence. Asking for the repo's newest commit answers "did
+     anything change at all" for one unit; the listings are only fetched when
+     the answer is yes. */
   function poll() {
-    if (!state.resolved) return schedule();
-    var res = state.resolved;
-    var changed = [];
+    if (!state.resolved || !state.repo) return schedule();
 
-    var jobs = [
-      res.handoff ? AMSGitHub.listDir(state.repo, res.handoff.path, { conditional: true })
-                  : Promise.resolve({ unchanged: true }),
-      res.sprints ? AMSGitHub.listDir(state.repo, res.sprints.path, { conditional: true })
-                  : Promise.resolve({ unchanged: true })
-    ];
+    AMSGitHub.headCommit(state.repo, { conditional: true }).then(function (head) {
+      var moved = head.sha && head.sha !== state.headSha;
+      if (!moved) {
+        state.lastPolled = new Date().toISOString();
+        state.lastGood = state.lastPolled;
+        state.stale = false;
+        state.note = '';
+        paintAll();
+        return schedule();
+      }
+      state.headSha = head.sha;
+      return refresh();
+    }).catch(pollFailed);
+  }
 
-    Promise.all(jobs).then(function (r) {
+  /* Something moved: re-read both listings and whatever changed under them. */
+  function refresh() {
+    var res = state.resolved, changed = [], work = [];
+
+    return Promise.all([
+      res.handoff ? AMSGitHub.listDir(state.repo, res.handoff.path) : Promise.resolve(null),
+      res.sprints ? AMSGitHub.listDir(state.repo, res.sprints.path) : Promise.resolve(null)
+    ]).then(function (r) {
       var hoRes = r[0], spRes = r[1];
-      var work = [];
 
-      if (!hoRes.unchanged && hoRes.entries) {
+      if (hoRes) {
         var next = indexHandoffs(hoRes.entries);
         var before = state.handoffIndex.map(function (e) { return e.name + ':' + e.sha; }).join('|');
         var after = next.map(function (e) { return e.name + ':' + e.sha; }).join('|');
@@ -190,17 +210,23 @@ var AMSApp = (function () {
           state.handoffIndex = next;
           changed.push('acc-handoff', 'acc-history');
           var newest = next[0];
-          work.push(loadHandoffBody(newest));
-          work.push(AMSGitHub.lastCommit(state.repo, newest.path).then(function (c) {
-            if (c) { state.latestCommit = c.date; newest.commit = c.date; }
-          }, function () {}));
+          if (newest) {
+            work.push(loadHandoffBody(newest));
+            work.push(AMSGitHub.lastCommit(state.repo, newest.path).then(function (c) {
+              if (c) { state.latestCommit = c.date; newest.commit = c.date; }
+            }, function () {}));
+          }
         }
       }
 
-      if (!spRes.unchanged && spRes.entries) {
-        res.sprints.entries = spRes.entries;
-        changed.push('main');
-        work.push(loadSprints(res).then(function (b) { if (b) state.board = b; }));
+      if (spRes) {
+        var sBefore = res.sprints.entries.map(function (e) { return e.name + ':' + e.sha; }).join('|');
+        var sAfter = spRes.entries.map(function (e) { return e.name + ':' + e.sha; }).join('|');
+        if (sBefore !== sAfter) {
+          res.sprints.entries = spRes.entries;
+          changed.push('main');
+          work.push(loadSprints(res).then(function (b) { if (b) state.board = b; }));
+        }
       }
 
       return Promise.all(work).then(function () {
@@ -211,16 +237,17 @@ var AMSApp = (function () {
         paintAll(changed);
         schedule();
       });
-    }).catch(function (err) {
-      /* Keep the last good data; say how old it is and why it is not moving. */
-      state.stale = true;
-      state.note = err.kind === 'rate-limited'
-        ? 'rate limited — resumes ' + (AMSGitHub.rate.reset
-            ? R.relTime(AMSGitHub.rate.reset).replace(' ago', ' from now') : 'shortly')
-        : (err.kind === 'transient' ? 'network unreachable' : (err.message || 'poll failed'));
-      paintAll();
-      schedule();
     });
+  }
+
+  /* Keep the last good data; say how old it is and why it is not moving. */
+  function pollFailed(err) {
+    state.stale = true;
+    state.note = err.kind === 'rate-limited'
+      ? 'rate limited — resumes ' + R.untilTime(AMSGitHub.rate.reset)
+      : (err.kind === 'transient' ? 'network unreachable' : (err.message || 'poll failed'));
+    paintAll();
+    schedule();
   }
 
   /* ---------- states ---------- */
@@ -246,11 +273,15 @@ var AMSApp = (function () {
   }
 
   function showNotAms(res) {
+    var dirs = (res.tried && res.tried.length) ? res.tried : ['AMS/', '.ams/'];
     R.state('No AMS structure in this repository', [
-      R.p('Looked in <code>' + (res.tried || []).map(escapeHtml).join('</code>, <code>') +
-          '</code> for a config file, then for <code>SPRINTS/</code> and ' +
-          '<code>HANDOFF/</code> inside the AMS directory and at the repository root.'),
-      R.p('Found neither. <code>' + escapeHtml(state.repo) + '</code> does not appear to use AMS.')
+      R.p('Looked for a config file in <code>' +
+          dirs.map(escapeHtml).join('</code> and <code>') + '</code>, then for ' +
+          '<code>SPRINTS/</code> and <code>HANDOFF/</code> inside those directories ' +
+          'and at the repository root.'),
+      R.p('Found none of them, so <code>' + escapeHtml(state.repo) +
+          '</code> does not appear to use AMS.'),
+      R.p('If it does, check that the directories are committed and public.')
     ]);
   }
 
@@ -266,9 +297,7 @@ var AMSApp = (function () {
     if (err && err.kind === 'rate-limited') {
       R.state('GitHub rate limit reached', [
         R.p('Unauthenticated GitHub API access is limited to 60 requests per hour per IP.'),
-        R.p(AMSGitHub.rate.reset
-          ? 'The limit resets ' + R.relTime(AMSGitHub.rate.reset).replace(' ago', ' from now') + '.'
-          : 'Try again shortly.'),
+        R.p('The limit resets ' + R.untilTime(AMSGitHub.rate.reset) + '.'),
         R.p('The bundled snapshot needs no API calls: <a href="?fixtures=1">?fixtures=1</a>')
       ]);
       return;
@@ -351,7 +380,7 @@ var AMSApp = (function () {
     return bootLive();
   }
 
-  return { start: start, _state: state, poll: poll };
+  return { start: start, _state: state, poll: poll, refresh: refresh };
 })();
 
 document.addEventListener('DOMContentLoaded', AMSApp.start);

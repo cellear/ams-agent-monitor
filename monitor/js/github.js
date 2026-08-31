@@ -34,8 +34,10 @@ var AMSGitHub = (function () {
     }
   }
 
-  /* Conditional GET against the JSON API. A 304 costs nothing against the
-     hourly budget, so steady-state polling is nearly free. */
+  /* Conditional GET against the JSON API. Note that for UNAUTHENTICATED
+     requests a 304 still costs one unit of the 60/hour budget — measured
+     against the live API, not assumed — so conditional requests save
+     bandwidth but not quota. The poll loop is shaped around that. */
   function apiGet(path, opts) {
     opts = opts || {};
     var url = API + path;
@@ -88,6 +90,15 @@ var AMSGitHub = (function () {
 
   /* Latest commit touching a path — one call, used for the status bar and
      lazily per file when a history entry is opened. */
+  /* Newest commit anywhere in the repo. One call answers "has anything changed
+     at all", which is what the poll loop asks 30 times an hour. */
+  function headCommit(repo, opts) {
+    return apiGet('/repos/' + repo + '/commits?per_page=1', opts).then(function (r) {
+      var c = r.data && r.data[0];
+      return { unchanged: r.unchanged, sha: c ? c.sha : null, date: c ? c.commit.committer.date : null };
+    });
+  }
+
   function lastCommit(repo, path) {
     return apiGet('/repos/' + repo + '/commits?per_page=1&path=' + encodeURIComponent(path))
       .then(function (r) {
@@ -98,7 +109,7 @@ var AMSGitHub = (function () {
 
   return {
     apiGet: apiGet, raw: raw, listDir: listDir, repoInfo: repoInfo,
-    lastCommit: lastCommit, rate: rate,
+    lastCommit: lastCommit, headCommit: headCommit, rate: rate,
     reset: function () { etags = {}; cache = {}; }
   };
 })();

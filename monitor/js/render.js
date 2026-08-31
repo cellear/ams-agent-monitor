@@ -50,6 +50,21 @@ var AMSRender = (function () {
     return new Date(t).toISOString().slice(0, 10);
   }
 
+  /* relTime clamps to the past, so a rate-limit reset (always in the future)
+     rendered as "0 s". Countdowns need their own formatter. */
+  function untilTime(iso, now) {
+    if (!iso) return 'shortly';
+    var t = new Date(iso).getTime();
+    if (isNaN(t)) return 'shortly';
+    var s = Math.round((t - (now || Date.now())) / 1000);
+    if (s <= 0) return 'now';
+    if (s < 60) return 'in ' + s + ' s';
+    var m = Math.round(s / 60);
+    if (m < 60) return 'in ' + m + ' min';
+    var h = Math.round(m / 60);
+    return 'in ' + h + ' h';
+  }
+
   var DOT = { done: 'dot', progress: 'dot half', planned: 'dot ring', stale: 'dot stale' };
 
   /* ---------- status bar (pin 1) ---------- */
@@ -227,6 +242,6 @@ var AMSRender = (function () {
   return {
     statusBar: statusBar, board: board, handoff: handoff, history: history,
     state: state, showApp: showApp, p: p, el: el, flash: flash,
-    relTime: relTime, markdown: markdown
+    relTime: relTime, untilTime: untilTime, markdown: markdown
   };
 })();

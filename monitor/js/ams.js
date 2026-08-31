@@ -74,8 +74,12 @@ var AMSRepo = (function () {
         throw err;
       });
     }
+    /* Always carry the list of directories tried, including when none existed:
+       the non-AMS state names what was looked for, and a null here left it
+       reading "Looked in  for a config file". */
     return attempt(0).then(function (r) {
-      if (r) r.tried = tried;
+      if (!r) return { amsDir: null, listing: [], configPath: null, config: null, tried: tried };
+      r.tried = tried;
       return r;
     });
   }
@@ -104,7 +108,7 @@ var AMSRepo = (function () {
      verdict is 'ok' | 'no-sprints' | 'not-ams'. */
   function resolve(repo, gh) {
     return findConfig(repo, gh).then(function (found) {
-      var amsDir = found ? found.amsDir : 'AMS';
+      var amsDir = found && found.amsDir ? found.amsDir : 'AMS';
       var cfg = found && found.config ? found.config : { components: null, settings: {} };
       var comps = componentsList(cfg);
 

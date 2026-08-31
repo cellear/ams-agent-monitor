@@ -61,8 +61,10 @@ Renders with no network. This is the graded reference.
 - [ ] **D3** Network dropped mid-session → last good data retained plus a stale warning with
       the data's age. Not a blank page.
 - [ ] **D4** First load with no successful fetch → error state, not an empty shell.
-- [ ] **D5** Steady-state polling stays inside the 60/hr unauthenticated budget, verified
-      against rate-limit headers after 30+ minutes open.
+- [ ] **D5** Steady-state polling stays inside the 60/hr unauthenticated budget. Note that
+      an unauthenticated 304 still costs a unit — measured, not assumed — so the tick asks
+      only for the repo head commit and fetches listings only when it moves. Budget: 6 calls
+      to boot, 1 per quiet tick, 36 of 60 in a quiet hour.
 - [ ] **D6** Rate-limited or 403 → explanatory message naming the limit and reset time.
 
 ## E. Layout
