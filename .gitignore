@@ -1,0 +1,5 @@
+# Reference clones of other projects — 22MB across 6 nested git repos.
+# Reference material, not project source; re-clone from cellear/* as needed.
+INCOMING/
+
+.DS_Store
