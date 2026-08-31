@@ -49,7 +49,7 @@ a{color:inherit}
 .sprint.cur .name small{color:#ccc}
 .stories{display:flex;gap:8px;flex:1;flex-wrap:wrap;min-width:0}
 .story{display:flex;align-items:center;gap:7px;padding:8px 10px;font-size:12px;
-  max-width:210px;min-width:0}
+  max-width:270px;min-width:0}
 .story .ttl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .story .sid{font-size:10px;color:var(--mute);flex:none}
 .story.planned{border-style:dashed;color:var(--mute)}

@@ -80,7 +80,10 @@ var AMSApp = (function () {
       fx.handoffs.forEach(function (h) {
         state.handoffCache[h.name] = AMSHandoffs.parse(h.name, h.body);
       });
-      state.latestCommit = fx._captured;
+      /* The snapshot has no commit times. Use the newest handoff's own filename
+         date so the bar reports the handoff's age, not the capture's. */
+      var newestFx = state.handoffIndex[0];
+      state.latestCommit = newestFx && newestFx.date ? newestFx.date + 'T12:00:00Z' : fx._captured;
       state.lastPolled = fx._captured;
       state.lastGood = fx._captured;
       state.note = 'fixture';

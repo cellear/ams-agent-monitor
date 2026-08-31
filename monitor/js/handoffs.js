@@ -37,14 +37,24 @@ var AMSHandoffs = (function () {
     return m ? m[1] + '-' + m[2] + '-' + m[3] : null;
   }
 
-  /* "handoff-2026-08-30-s2-5-result-page-cody.md" → "s2-5 result page · cody" */
+  /* "handoff-2026-08-30-s2-5-result-page-cody.md" → "S2-5 · result page · cody".
+     The story id survives the split on hyphens only if it is rejoined; without
+     this the label reads "s2 5 result page". */
+  var ID_HEAD = /^([sf])(\d+[a-z]*)$/i;
+
   function labelFromName(name) {
     var m = FILE_RE.exec(name);
     if (!m) return name.replace(/\.md$/, '');
     var parts = m[4].split('-');
+    var id = null;
+    var head = ID_HEAD.exec(parts[0] || '');
+    if (head && /^([0-9]+|r)$/i.test(parts[1] || '')) {
+      id = (head[1] + head[2]).toUpperCase() + '-' + parts[1].toUpperCase();
+      parts = parts.slice(2);
+    }
     var agent = parts.length > 1 ? parts.pop() : null;
     var slug = parts.join(' ');
-    return agent ? slug + ' · ' + agent : slug;
+    return [id, slug, agent].filter(Boolean).join(' · ');
   }
 
   /* Split on ## headings, keeping anything before the first one as a preamble. */
