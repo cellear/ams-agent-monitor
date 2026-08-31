@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AMS Agent Monitor — wireframe</title>
+<style>
+  :root{
+    --paper:#ecebe7; --ink:#1f1f1f; --line:#3a3a3a; --mute:#7a7a76;
+    --fill:#dcdbd6; --fill2:#c9c8c2; --note:#fff7c2; --note-ink:#5a4a00;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--paper);color:var(--ink);
+    font:14px/1.45 "Helvetica Neue",Helvetica,Arial,sans-serif}
+  body{padding:32px 24px 64px}
+  h1{font-size:22px;font-weight:600;margin:0 0 4px}
+  .sub{color:var(--mute);margin:0 0 28px;max-width:70ch}
+  .stage{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:40px;align-items:start;max-width:1440px}
+  @media (max-width:1100px){.stage{grid-template-columns:1fr}}
+  h2{font-size:15px;font-weight:600;margin:0 0 10px}
+
+  /* generic wireframe primitives */
+  .frame{background:#fff;border:2px solid var(--line);border-radius:6px;overflow:hidden}
+  .box{border:1.5px solid var(--line);border-radius:4px;background:#fff}
+  .ph{background:var(--fill);border-radius:3px;height:10px}
+  .ph.w40{width:40%}.ph.w60{width:60%}.ph.w80{width:80%}.ph.w100{width:100%}
+  .lbl{font-size:11px;color:var(--mute)}
+  .hatch{background:repeating-linear-gradient(135deg,#e6e5e0 0 6px,#d3d2cc 6px 8px)}
+  .pin{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;
+    border-radius:50%;background:var(--ink);color:#fff;font-size:11px;font-weight:600;
+    vertical-align:middle;flex:none}
+  .pin.abs{position:absolute;z-index:2}
+  .rel{position:relative}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--line);vertical-align:middle}
+  .dot.ring{background:#fff;border:1.5px solid var(--line)}
+  .dot.half{background:linear-gradient(90deg,var(--line) 50%,#fff 50%);border:1.5px solid var(--line)}
+  .btn{border:1.5px solid var(--line);border-radius:4px;padding:3px 8px;font-size:11px;background:#fff}
+
+  /* ===== desktop ===== */
+  .desk{width:100%;max-width:1040px}
+  .desk .bar{display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:2px solid var(--line);background:var(--fill)}
+  .desk .bar .title{font-weight:600}
+  .desk .bar .spacer{flex:1}
+  .desk .body{display:grid;grid-template-columns:1fr 280px;min-height:560px}
+  .desk .main{padding:16px;border-right:2px solid var(--line)}
+  .desk .side{padding:16px;display:flex;flex-direction:column;gap:14px}
+  .boardhead{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+  .legend{display:flex;gap:12px;margin-left:auto}
+  .legend span{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--mute)}
+  .sprint{display:grid;grid-template-columns:120px 1fr 78px;gap:10px;align-items:stretch;
+    padding:10px 0;border-top:1.5px dashed var(--fill2)}
+  .sprint:first-of-type{border-top:0}
+  .sprint .name{padding:6px 8px;font-weight:600;font-size:12px;line-height:1.3}
+  .sprint .name small{display:block;font-weight:400;color:var(--mute);font-size:11px;margin-top:3px}
+  .sprint.cur .name{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .sprint.cur .name small{color:#ccc}
+  .stories{display:flex;gap:8px;flex-wrap:wrap}
+  .story{width:96px;min-height:58px;padding:6px 7px;font-size:11px;line-height:1.25;display:flex;flex-direction:column;justify-content:space-between}
+  .story.planned{border-style:dashed;color:var(--mute)}
+  .story.active{border-width:2.5px}
+  .check{display:flex;align-items:center;justify-content:center;font-size:11px;text-align:center;padding:4px}
+  .check.pending{border-style:dashed;color:var(--mute)}
+  .side .box{padding:10px 12px}
+  .side h3{font-size:12px;margin:0 0 8px;font-weight:600}
+  .side dl{margin:0;display:grid;grid-template-columns:auto;gap:7px}
+  .side dt{font-size:11px;color:var(--mute)}
+  .side dd{margin:2px 0 0;display:flex;flex-direction:column;gap:4px}
+  .hist{display:flex;flex-direction:column;gap:6px}
+  .hist div{display:flex;justify-content:space-between;font-size:11px;gap:8px}
+  .hist div span:last-child{color:var(--mute);flex:none}
+
+  /* ===== mobile ===== */
+  .phone{width:300px;border-radius:26px;border-width:3px;padding:10px 8px;background:#fff}
+  .phone .screen{border:1.5px solid var(--fill2);border-radius:16px;overflow:hidden}
+  .phone .bar{padding:10px 12px;border-bottom:1.5px solid var(--line);background:var(--fill);font-size:12px}
+  .phone .bar .title{font-weight:600}
+  .phone .bar .meta{display:flex;justify-content:space-between;margin-top:4px;color:var(--mute);font-size:11px}
+  .phone .content{padding:10px}
+  .tabs{display:flex;gap:4px;margin-bottom:10px}
+  .tabs span{flex:1;text-align:center;border:1.5px solid var(--line);border-radius:4px;font-size:11px;padding:4px 0}
+  .tabs span.on{background:var(--ink);color:#fff}
+  .mstory{padding:7px 9px;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .mstory.planned{border-style:dashed;color:var(--mute)}
+  .mstory.active{border-width:2.5px}
+  .mstory .ttl{flex:1}
+  .mcheck{text-align:center;font-size:11px;padding:5px;margin:4px 0 12px;border-style:dashed;color:var(--mute)}
+  .acc{padding:8px 10px;font-size:12px;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .acc .chev{color:var(--mute)}
+  .acc.open{flex-direction:column;align-items:stretch;gap:6px}
+  .acc.open .row{display:flex;justify-content:space-between}
+  .acc.open dl{margin:0;display:grid;gap:5px}
+  .acc.open dt{font-size:11px;color:var(--mute)}
+  .acc.open dd{margin:2px 0 0;display:flex;flex-direction:column;gap:3px}
+
+  /* ===== notes ===== */
+  .notes{background:var(--note);color:var(--note-ink);border-radius:8px;padding:16px 18px}
+  .notes h2{color:var(--note-ink);margin-bottom:10px}
+  .notes ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+  .notes li{display:flex;gap:10px;font-size:13px;line-height:1.4}
+  .notes .pin{margin-top:2px;background:var(--note-ink)}
+  .notes .q{margin-top:18px;padding-top:12px;border-top:1px solid rgba(90,74,0,.25)}
+  .notes .q p{margin:0 0 6px;font-weight:600}
+  .notes ul{margin:0;padding-left:18px;font-size:13px}
+  .notes ul li{display:list-item;gap:0}
+  .row2{display:flex;gap:40px;flex-wrap:wrap;align-items:flex-start}
+  .mnotes{max-width:520px;font-size:13px;color:var(--mute);line-height:1.5;margin-top:8px}
+  .mnotes p{margin:0 0 8px}
+</style>
+</head>
+<body>
+
+<h1>AMS Agent Monitor — wireframe</h1>
+<p class="sub">Read-only. Reads the handoff directory from the AMS GitHub repo, polls for new commits, and redraws.
+Grey = placeholder; solid border = done; thick border = in progress; dashed = planned.</p>
+
+<div class="stage">
+
+<!-- ================= DESKTOP ================= -->
+<div>
+<h2>Desktop / wide browser</h2>
+<div class="frame desk rel">
+  <span class="pin abs" style="left:8px;top:8px">1</span>
+  <div class="bar">
+    <span class="title">AMS Agent Monitor</span>
+    <span class="lbl">cellear/AMS &nbsp;·&nbsp; handoffs/</span>
+    <span class="spacer"></span>
+    <span class="lbl">Last handoff: 2 h ago</span>
+    <span class="lbl"><span class="dot"></span> Checked 40 s ago</span>
+    <span class="btn">Read-only</span>
+  </div>
+
+  <div class="body">
+    <div class="main rel">
+      <span class="pin abs" style="left:-2px;top:14px">2</span>
+      <div class="boardhead">
+        <h2 style="margin:0 0 0 22px">Sprint board</h2>
+        <div class="legend">
+          <span><span class="dot"></span> done</span>
+          <span><span class="dot half"></span> in progress</span>
+          <span><span class="dot ring"></span> planned</span>
+        </div>
+      </div>
+
+      <div class="sprint">
+        <div class="box name">Sprint 1<small>Scaffold + command discovery</small></div>
+        <div class="stories">
+          <div class="box story"><span>Go module</span><span class="dot"></span></div>
+          <div class="box story"><span>DDEV context</span><span class="dot"></span></div>
+          <div class="box story"><span>Drush discovery</span><span class="dot"></span></div>
+          <div class="box story"><span>Minimal TUI</span><span class="dot"></span></div>
+          <div class="box story"><span>Add-on stub</span><span class="dot"></span></div>
+        </div>
+        <div class="box check">Demo ✓</div>
+      </div>
+
+      <div class="sprint">
+        <div class="box name">Sprint 2<small>Parameter discovery + form</small></div>
+        <div class="stories">
+          <div class="box story"><span>Help parsing</span><span class="dot"></span></div>
+          <div class="box story"><span>Selection wiring</span><span class="dot"></span></div>
+          <div class="box story"><span>Parameter form</span><span class="dot"></span></div>
+          <div class="box story"><span>Demo script</span><span class="dot"></span></div>
+        </div>
+        <div class="box check">Demo ✓</div>
+      </div>
+
+      <div class="sprint cur rel">
+        <span class="pin abs" style="left:-2px;top:8px">3</span>
+        <div class="box name">Sprint 3<small>Command execution</small></div>
+        <div class="stories">
+          <div class="box story"><span>Executor</span><span class="dot"></span></div>
+          <div class="box story"><span>Output pane</span><span class="dot"></span></div>
+          <div class="box story active"><span>Run button</span><span class="dot half"></span></div>
+          <div class="box story planned"><span>Navigation fix</span><span class="dot ring"></span></div>
+          <div class="box story planned"><span>Demo scripts</span><span class="dot ring"></span></div>
+        </div>
+        <div class="box check pending">Accepted</div>
+      </div>
+
+      <div class="sprint">
+        <div class="box name">Sprint 4<small>Navigation + UX polish</small></div>
+        <div class="stories">
+          <div class="box story planned"><span>Drill-down</span><span class="dot ring"></span></div>
+          <div class="box story planned"><span>Output scroll</span><span class="dot ring"></span></div>
+          <div class="box story planned"><span>Search filter</span><span class="dot ring"></span></div>
+          <div class="box story planned"><span>Validation</span><span class="dot ring"></span></div>
+        </div>
+        <div class="box check pending">Accepted</div>
+      </div>
+    </div>
+
+    <div class="side rel">
+      <span class="pin abs" style="left:-2px;top:14px">4</span>
+      <div class="box">
+        <h3>Latest handoff <span class="lbl">— Sprint 3, handoff 2</span></h3>
+        <dl>
+          <dt>Context</dt><dd><div class="ph w100"></div><div class="ph w80"></div></dd>
+          <dt>What's done</dt><dd><div class="ph w100"></div><div class="ph w60"></div></dd>
+          <dt>What's next</dt><dd><div class="ph w80"></div><div class="ph w100"></div></dd>
+          <dt>Notes / blockers</dt><dd><div class="ph w40"></div></dd>
+          <dt>Files / references</dt><dd><div class="ph w60"></div><div class="ph w60"></div></dd>
+        </dl>
+      </div>
+
+      <div class="box rel">
+        <span class="pin abs" style="left:-14px;top:-4px">5</span>
+        <h3>Handoff history</h3>
+        <div class="hist">
+          <div><span>Sprint 3 · handoff 2</span><span>2 h ago</span></div>
+          <div><span>Sprint 3 · handoff 1</span><span>yesterday</span></div>
+          <div><span>Sprint 2 · handoff 3</span><span>3 d ago</span></div>
+          <div><span>Sprint 2 · handoff 2</span><span>4 d ago</span></div>
+          <div><span>Sprint 2 · handoff 1</span><span>5 d ago</span></div>
+          <div class="lbl"><span>Older…</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MOBILE ================= -->
+<div class="row2" style="margin-top:44px">
+<div>
+<h2>Phone</h2>
+<div class="frame phone rel">
+  <span class="pin abs" style="left:-6px;top:-6px">6</span>
+  <div class="screen">
+    <div class="bar">
+      <div class="title">AMS Agent Monitor</div>
+      <div class="meta"><span>cellear/AMS</span><span><span class="dot"></span> 40 s ago</span></div>
+    </div>
+    <div class="content">
+      <div class="tabs rel">
+        <span class="pin abs" style="left:-12px;top:-8px">7</span>
+        <span>S1</span><span>S2</span><span class="on">S3</span><span>S4</span>
+      </div>
+      <div style="font-size:12px;font-weight:600;margin-bottom:6px">Sprint 3 <span class="lbl" style="font-weight:400">— Command execution</span></div>
+      <div class="box mstory"><span class="dot"></span><span class="ttl">Executor</span></div>
+      <div class="box mstory"><span class="dot"></span><span class="ttl">Output pane</span></div>
+      <div class="box mstory active"><span class="dot half"></span><span class="ttl">Run button</span></div>
+      <div class="box mstory planned"><span class="dot ring"></span><span class="ttl">Navigation fix</span></div>
+      <div class="box mstory planned"><span class="dot ring"></span><span class="ttl">Demo scripts</span></div>
+      <div class="box mcheck">Accepted — pending</div>
+
+      <div class="box acc open rel">
+        <span class="pin abs" style="left:-12px;top:-6px">8</span>
+        <div class="row"><span>Latest handoff</span><span class="chev">▾</span></div>
+        <dl>
+          <dt>What's done</dt><dd><div class="ph w100"></div><div class="ph w60"></div></dd>
+          <dt>What's next</dt><dd><div class="ph w80"></div></dd>
+          <dt>Notes / blockers</dt><dd><div class="ph w40"></div></dd>
+        </dl>
+      </div>
+      <div class="box acc"><span>Handoff history</span><span class="chev">▸</span></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="mnotes">
+  <p><strong>Phone layout in a sentence:</strong> one sprint at a time, current sprint selected by default, the board's rows become a vertical list, and the two side panels collapse into accordions underneath.</p>
+  <p>Nothing on the phone is a different feature — it's the same three things (board, latest handoff, history) stacked instead of side by side.</p>
+</div>
+</div>
+</div>
+
+<!-- ================= NOTES ================= -->
+<aside class="notes">
+  <h2>What each region is, and where its data comes from</h2>
+  <ol>
+    <li><span class="pin">1</span><span><strong>Status bar.</strong> Which repo and directory is being watched, when the newest handoff landed, and when the monitor last polled GitHub. "Read-only" is a promise, not a mode switch.</span></li>
+    <li><span class="pin">2</span><span><strong>Sprint board.</strong> Laid out like your AMS Sprints slide: one row per sprint, stories left-to-right, checkpoint (Demo / Accepted) at the end of the row.</span></li>
+    <li><span class="pin">3</span><span><strong>Current sprint</strong> is emphasized. It's the row with in-progress work; earlier rows are all done, later rows are all planned.</span></li>
+    <li><span class="pin">4</span><span><strong>Latest handoff.</strong> The most recent handoff file rendered as-is, using the five sections from your handoff protocol: Context, What's done, What's next, Notes/blockers, Files/references.</span></li>
+    <li><span class="pin">5</span><span><strong>Handoff history.</strong> The files in the directory, newest first, with commit times. Clicking one would swap it into panel 4.</span></li>
+    <li><span class="pin">6</span><span><strong>Phone.</strong> Same status bar, compressed.</span></li>
+    <li><span class="pin">7</span><span><strong>Sprint picker</strong> replaces the multi-row board. Defaults to the current sprint.</span></li>
+    <li><span class="pin">8</span><span><strong>Accordions</strong> for handoff and history so the board stays above the fold.</span></li>
+  </ol>
+
+  <div class="q">
+    <p>Assumptions I made that you haven't told me yet</p>
+    <ul>
+      <li>Story status (done / in progress / planned) can be derived from the handoff files — presumably "What's done" vs. "What's next" — rather than from a separate board file.</li>
+      <li>Sprint membership and story names are also recoverable from the handoffs, or from something else in the repo.</li>
+      <li>The checkpoint at the end of each row (Demo / Accepted) is recorded somewhere the monitor can read.</li>
+      <li>Handoff files are named or ordered in a way that gives sprint number and sequence.</li>
+    </ul>
+  </div>
+</aside>
+
+</div>
+</body>
+</html>
