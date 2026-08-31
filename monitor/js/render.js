@@ -84,6 +84,34 @@ var AMSRender = (function () {
       : 'Checked ' + relTime(s.lastPolled);
     $('bar-note').textContent = s.note || '';
     $('bar-note').classList.toggle('hidden', !s.note);
+
+    var refresh = $('refresh');
+    if (refresh) {
+      refresh.disabled = !!s.refreshing;
+      refresh.textContent = s.refreshing ? 'Refreshing…' : 'Refresh';
+    }
+    var tok = $('token-toggle');
+    if (tok) {
+      tok.classList.toggle('on', !!s.authenticated);
+      tok.textContent = s.authenticated ? 'Token ✓' : 'Token';
+      tok.title = s.authenticated
+        ? 'Signed in with a token — updating live'
+        : 'Add a GitHub token to watch this repo live';
+    }
+  }
+
+  /* Says what the token does and what it currently buys. */
+  function tokenNote(authenticated, rate) {
+    var n = $('token-note');
+    if (!n) return;
+    var budget = (rate && rate.remaining !== null)
+      ? ' ' + rate.remaining + ' of ' + rate.limit + ' requests left this hour.' : '';
+    n.textContent = authenticated
+      ? 'Stored in this browser only. Updating live every 30 s.' + budget
+      : 'Without a token the page updates only when you press Refresh, and GitHub '
+        + 'allows 60 requests an hour. A fine-grained token with read-only access to '
+        + 'public repositories is enough. It is stored in this browser and never sent '
+        + 'anywhere but GitHub.' + budget;
   }
 
   /* ---------- board (pins 2-3) ---------- */
@@ -285,7 +313,7 @@ var AMSRender = (function () {
   }
 
   return {
-    statusBar: statusBar, board: board, handoff: handoff, history: history,
+    statusBar: statusBar, tokenNote: tokenNote, board: board, handoff: handoff, history: history,
     state: state, showApp: showApp, p: p, el: el, flash: flash,
     relTime: relTime, untilTime: untilTime, markdown: markdown
   };

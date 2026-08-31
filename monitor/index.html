@@ -4,7 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AMS Agent Monitor</title>
-<link rel="stylesheet" href="css/monitor.css">
+<!-- Version stamps: browsers cache these aggressively, so a deploy without
+     them serves stale JS against fresh HTML. Bump on release. -->
+<link rel="stylesheet" href="css/monitor.css?v=202608310911">
 </head>
 <body>
 
@@ -20,7 +22,20 @@
     <span class="lbl" id="bar-latest"></span>
     <span class="lbl"><span class="pulse"></span><span id="bar-polled"></span></span>
     <span class="lbl hidden" id="bar-note"></span>
+    <button class="barbtn" id="refresh" title="Fetch the latest now">Refresh</button>
+    <button class="barbtn" id="token-toggle" title="Use a GitHub token for live updates">Token</button>
     <span class="ro" title="This page never writes to the repository.">Read-only</span>
+  </div>
+
+  <!-- Viewer-supplied token. Kept in this browser only; never in the URL or the
+       source, since a static page cannot hold a secret. -->
+  <div class="tokenbar hidden" id="tokenbar">
+    <label for="token-input">GitHub token</label>
+    <input type="password" id="token-input" autocomplete="off" spellcheck="false"
+           placeholder="github_pat_… or ghp_…">
+    <button class="barbtn" id="token-save">Save</button>
+    <button class="barbtn" id="token-clear">Clear</button>
+    <span class="lbl" id="token-note"></span>
   </div>
 
   <div class="body">
@@ -75,13 +90,13 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
-<script src="js/config.js"></script>
-<script src="js/agents.js"></script>
-<script src="js/github.js"></script>
-<script src="js/ams.js"></script>
-<script src="js/sprints.js"></script>
-<script src="js/handoffs.js"></script>
-<script src="js/render.js"></script>
-<script src="js/app.js"></script>
+<script src="js/config.js?v=202608310911"></script>
+<script src="js/agents.js?v=202608310911"></script>
+<script src="js/github.js?v=202608310911"></script>
+<script src="js/ams.js?v=202608310911"></script>
+<script src="js/sprints.js?v=202608310911"></script>
+<script src="js/handoffs.js?v=202608310911"></script>
+<script src="js/render.js?v=202608310911"></script>
+<script src="js/app.js?v=202608310911"></script>
 </body>
 </html>

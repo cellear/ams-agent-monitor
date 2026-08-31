@@ -2,7 +2,10 @@
 var AMSApp = (function () {
   'use strict';
 
-  var POLL_MS = 120000;              /* ~2 min; 304s are free against the budget */
+  /* Authenticated: poll, because 5,000/hour affords it. Unauthenticated: no
+     timer at all — the user presses Refresh. Either way the work is the same
+     "fetch the listings and redraw", so there is one path, not two. */
+  var POLL_MS = 30000;
   var R = AMSRender;
 
   var state = {
@@ -10,7 +13,7 @@ var AMSApp = (function () {
     board: null, handoffIndex: [], handoffCache: {},
     selectedFile: null, selectedSprint: null,
     lastPolled: null, lastGood: null, latestCommit: null,
-    stale: false, note: '', timer: null, booted: false, headSha: null
+    stale: false, note: '', timer: null, booted: false, refreshing: false
   };
 
   /* ---------- shared shaping ---------- */
@@ -39,8 +42,10 @@ var AMSApp = (function () {
            state.resolved.handoff && state.resolved.handoff.path].filter(Boolean).join(' · ')
         : '',
       latestCommit: state.latestCommit, lastPolled: state.lastPolled,
-      lastGood: state.lastGood, stale: state.stale, note: state.note
+      lastGood: state.lastGood, stale: state.stale, note: state.note,
+      refreshing: state.refreshing, authenticated: AMSGitHub.hasToken()
     });
+    R.tokenNote(AMSGitHub.hasToken(), AMSGitHub.rate);
 
     if (b) {
       if (!state.selectedSprint || !b.sprints.some(function (s) { return s.id === state.selectedSprint; })) {
@@ -140,11 +145,9 @@ var AMSApp = (function () {
         return Promise.all([
           loadHandoffBody(newest),
           newest ? AMSGitHub.lastCommit(state.repo, newest.path).catch(function () { return null; })
-                 : Promise.resolve(null),
-          AMSGitHub.headCommit(state.repo).catch(function () { return null; })
+                 : Promise.resolve(null)
         ]).then(function (x) {
           if (x[1]) { state.latestCommit = x[1].date; if (newest) newest.commit = x[1].date; }
-          if (x[2]) state.headSha = x[2].sha;
           state.lastPolled = new Date().toISOString();
           state.lastGood = state.lastPolled;
           state.booted = true;
@@ -159,36 +162,19 @@ var AMSApp = (function () {
 
   function schedule() {
     if (state.timer) clearTimeout(state.timer);
-    state.timer = setTimeout(poll, POLL_MS);
+    /* Only the authenticated path runs on a timer. Without a token the page
+       waits for the Refresh button, which is the whole reason the ETag and
+       head-commit machinery could be deleted. */
+    if (AMSGitHub.hasToken()) state.timer = setTimeout(function () { refresh(); }, POLL_MS);
   }
 
-  /* One call per tick. Polling both directory listings cost two units every
-     time — and since an unauthenticated 304 still costs a unit, 30 ticks an
-     hour would have consumed the entire 60/hour budget with nothing left for
-     the boot sequence. Asking for the repo's newest commit answers "did
-     anything change at all" for one unit; the listings are only fetched when
-     the answer is yes. */
-  function poll() {
-    if (!state.resolved || !state.repo) return schedule();
-
-    AMSGitHub.headCommit(state.repo, { conditional: true }).then(function (head) {
-      var moved = head.sha && head.sha !== state.headSha;
-      if (!moved) {
-        state.lastPolled = new Date().toISOString();
-        state.lastGood = state.lastPolled;
-        state.stale = false;
-        state.note = '';
-        paintAll();
-        return schedule();
-      }
-      state.headSha = head.sha;
-      return refresh();
-    }).catch(pollFailed);
-  }
-
-  /* Something moved: re-read both listings and whatever changed under them. */
-  function refresh() {
+  /* Re-read both listings and whatever changed under them. Called by the timer
+     when authenticated, and by the Refresh button always. */
+  function refresh(opts) {
+    if (!state.resolved || !state.repo) { schedule(); return Promise.resolve(); }
     var res = state.resolved, changed = [], work = [];
+    state.refreshing = true;
+    if (opts && opts.manual) paintAll();
 
     return Promise.all([
       res.handoff ? AMSGitHub.listDir(state.repo, res.handoff.path) : Promise.resolve(null),
@@ -233,21 +219,23 @@ var AMSApp = (function () {
         state.lastPolled = new Date().toISOString();
         state.lastGood = state.lastPolled;
         state.stale = false;
+        state.refreshing = false;
         state.note = changed.length ? 'updated just now' : '';
         paintAll(changed);
         schedule();
       });
+    }).catch(function (err) {
+      /* Keep the last good data; say how old it is and why it is not moving. */
+      state.refreshing = false;
+      state.stale = true;
+      state.note = err.kind === 'rate-limited'
+        ? 'rate limited — resumes ' + R.untilTime(AMSGitHub.rate.reset)
+        : err.kind === 'bad-token' ? 'token rejected'
+        : err.kind === 'transient' ? 'network unreachable'
+        : (err.message || 'refresh failed');
+      paintAll();
+      schedule();
     });
-  }
-
-  /* Keep the last good data; say how old it is and why it is not moving. */
-  function pollFailed(err) {
-    state.stale = true;
-    state.note = err.kind === 'rate-limited'
-      ? 'rate limited — resumes ' + R.untilTime(AMSGitHub.rate.reset)
-      : (err.kind === 'transient' ? 'network unreachable' : (err.message || 'poll failed'));
-    paintAll();
-    schedule();
   }
 
   /* ---------- states ---------- */
@@ -354,6 +342,36 @@ var AMSApp = (function () {
       });
     });
 
+    document.getElementById('refresh').addEventListener('click', function () {
+      if (state.cfg && state.cfg.mode === 'fixtures') return;
+      refresh({ manual: true });
+    });
+
+    var bar = document.getElementById('tokenbar');
+    document.getElementById('token-toggle').addEventListener('click', function () {
+      bar.classList.toggle('hidden');
+      if (!bar.classList.contains('hidden')) document.getElementById('token-input').focus();
+    });
+
+    document.getElementById('token-save').addEventListener('click', function () {
+      var input = document.getElementById('token-input');
+      AMSGitHub.setToken(input.value);
+      input.value = '';                       /* never leave it on screen */
+      bar.classList.add('hidden');
+      paintAll();
+      /* Re-fetch immediately: the new budget may unblock what was rate-limited,
+         and this is also where a bad token surfaces. */
+      if (state.resolved) refresh({ manual: true }); else if (state.repo) bootLive();
+      schedule();
+    });
+
+    document.getElementById('token-clear').addEventListener('click', function () {
+      AMSGitHub.setToken(null);
+      document.getElementById('token-input').value = '';
+      if (state.timer) clearTimeout(state.timer);
+      paintAll();
+    });
+
     /* Relative times drift; refresh the bar without refetching. */
     setInterval(function () { if (state.booted) paintAll(); }, 30000);
   }
@@ -380,7 +398,7 @@ var AMSApp = (function () {
     return bootLive();
   }
 
-  return { start: start, _state: state, poll: poll, refresh: refresh };
+  return { start: start, _state: state, refresh: refresh };
 })();
 
 document.addEventListener('DOMContentLoaded', AMSApp.start);

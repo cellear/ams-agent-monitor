@@ -21,6 +21,20 @@ a{color:inherit}
   font-size:11px;background:#fff;white-space:nowrap}
 .bar .pulse{display:inline-block;width:9px;height:9px;border-radius:50%;
   background:var(--line);vertical-align:middle;margin-right:5px}
+.barbtn{border:1.5px solid var(--line);border-radius:4px;padding:3px 9px;font:inherit;
+  font-size:11px;background:#fff;cursor:pointer;white-space:nowrap}
+.barbtn:hover{background:var(--fill)}
+.barbtn:disabled{opacity:.5;cursor:default}
+.barbtn.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+/* Token row, revealed under the status bar. */
+.tokenbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:9px 16px;border-bottom:2px solid var(--line);background:var(--fill)}
+.tokenbar label{font-size:11px;color:var(--mute)}
+.tokenbar input{flex:1;min-width:220px;max-width:420px;font:inherit;font-size:12px;
+  padding:4px 8px;border:1.5px solid var(--line);border-radius:4px;background:#fff}
+.tokenbar .lbl{flex-basis:100%}
+
 .bar.stale{background:var(--warn);color:var(--warn-ink)}
 .bar.stale .pulse{background:#b58900}
 
