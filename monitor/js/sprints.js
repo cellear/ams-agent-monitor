@@ -66,12 +66,58 @@ var AMSSprints = (function () {
     };
   }
 
-  function parseStories(body) {
-    var out = [], m;
-    STORY_RE.lastIndex = 0;
-    while ((m = STORY_RE.exec(body || '')) !== null) {
-      out.push({ id: m[1], title: m[2].trim(), done: m[3].toLowerCase() === 'x' });
+  /* Fields on the line under a story heading:
+       **Owner:** Cody · **Model:** `claude-sonnet-5` · **Size:** m · **Depends on:** S2-2
+     Present on every story in both reference projects (28/28, 38/38). */
+  function parseFields(block) {
+    var out = {};
+    var re = /\*\*([A-Za-z][A-Za-z ]*?):\*\*\s*([^\n]*?)(?=\s*·\s*\*\*|\s*$)/gm;
+    var m;
+    while ((m = re.exec(block)) !== null) {
+      var key = m[1].trim().toLowerCase().replace(/\s+/g, '_');
+      if (!(key in out)) out[key] = m[2].trim().replace(/^`|`$/g, '');
     }
+    return out;
+  }
+
+  /* The agent is the leading token of the Owner value; everything after a
+     bracket or dash is commentary, and real values run to whole sentences:
+       "Cody"                                    → Cody
+       "Sandy (Junior — Haiku 4.5)"              → Sandy
+       "Quinn (QA — hired for this by Hannah)"   → Quinn
+       "Nadia (runs it) and Lila (writes it)"    → Nadia, Lila
+       "Luke (runs Muse) + Cody (Sonnet 5, …)"   → Luke, Cody
+     Multi-agent stories are real — 8 of the 66 stories across the two
+     reference projects name two people. */
+  function parseOwners(raw) {
+    if (!raw) return [];
+    return String(raw)
+      .split(/\s+and\s+|\s*\+\s*|\s*,\s*(?![^(]*\))/i)
+      .map(function (part) {
+        var m = /^\s*([A-Z][A-Za-z.'-]*)/.exec(part.replace(/^[^A-Za-z]+/, ''));
+        return m ? m[1] : null;
+      })
+      .filter(function (n, i, a) { return n && a.indexOf(n) === i; });
+  }
+
+  /* Split the file at story headings so each story keeps its own body: the
+     fields line, Scope, and the acceptance-criteria checklist. */
+  function parseStories(body) {
+    var out = [];
+    String(body || '').split(/^(?=###\s)/m).forEach(function (block) {
+      STORY_RE.lastIndex = 0;
+      var m = STORY_RE.exec(block);
+      if (!m) return;
+      var fields = parseFields(block.slice(m[0].length));
+      var owners = parseOwners(fields.owner);
+      out.push({
+        id: m[1], title: m[2].trim(), done: m[3].toLowerCase() === 'x',
+        owners: owners, owner: owners[0] || null, ownerRaw: fields.owner || null,
+        model: fields.model || null, size: fields.size || null,
+        dependsOn: fields.depends_on || null,
+        body: block.slice(m[0].length).trim()
+      });
+    });
     return out;
   }
 
@@ -132,6 +178,7 @@ var AMSSprints = (function () {
   return {
     build: build, parseFile: parseFile, isSprintFile: isSprintFile,
     compareIds: compareIds, parseTitle: parseTitle,
+    parseFields: parseFields, parseOwners: parseOwners,
     parseAcceptance: parseAcceptance, parseStories: parseStories,
     SPRINT_FILE: SPRINT_FILE
   };

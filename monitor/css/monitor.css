@@ -47,16 +47,50 @@ a{color:inherit}
 .sprint .name small{display:block;font-weight:400;color:var(--mute);font-size:11px;margin-top:3px}
 .sprint.cur .name{background:var(--ink);color:#fff;border-color:var(--ink)}
 .sprint.cur .name small{color:#ccc}
-.stories{display:flex;gap:8px;flex:1;flex-wrap:wrap;min-width:0}
-.story{display:flex;align-items:center;gap:7px;padding:8px 10px;font-size:12px;
-  max-width:270px;min-width:0}
-.story .ttl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.story .sid{font-size:10px;color:var(--mute);flex:none}
+/* Square cards, auto-filled so a row holds about five or six at desktop widths
+   and the rest wrap onto an even second row. Equal squares rather than v1's
+   ragged pills. */
+.stories{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));
+  gap:8px;flex:1;min-width:0;align-content:start}
+.story{display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+  aspect-ratio:1;padding:9px 7px 7px;font-size:12px;text-align:center;min-width:0;
+  background:#fff;transition:box-shadow .12s}
+.story .sid{font-size:10px;color:var(--mute);flex:none;letter-spacing:.02em}
+/* Wrapped and clamped: a long title cuts off rather than growing the card.
+   The clamp has to live on a child, not on .ttl itself — a flex item has its
+   display blockified, so -webkit-box on it is silently ignored and the text
+   overflows the card instead of being cut. */
+.story .ttl{flex:1;display:flex;align-items:center;justify-content:center;
+  overflow:hidden;margin:3px 0;min-height:0;width:100%}
+/* No hyphens:auto — at 12px it breaks words mid-syllable ("com-mand"), which
+   reads worse than a short line. overflow-wrap only rescues words too long to
+   fit at all. */
+.story .ttl b{font-weight:400;display:-webkit-box;-webkit-line-clamp:3;
+  -webkit-box-orient:vertical;overflow:hidden;line-height:1.25;
+  overflow-wrap:break-word}
+/* Status reads from across the room — the wireframe's 9px dot did not. */
+.story .mark{flex:none;width:19px;height:19px;border-radius:50%;display:flex;
+  align-items:center;justify-content:center;font-size:12px;line-height:1;
+  border:1.5px solid var(--line);background:#fff}
+.story.done .mark{background:#3f7d43;border-color:#3f7d43;color:#fff}
+.story.progress .mark{background:#d08326;border-color:#d08326;color:#fff;font-size:13px}
+.story.planned .mark{background:#fff;border-color:var(--fill2)}
+.story.stale .mark{background:var(--fill2);border-color:var(--mute);color:var(--mute)}
 .story.planned{border-style:dashed;color:var(--mute)}
 .story.progress{border-width:2.5px}
+.story:hover{box-shadow:0 0 0 2px var(--fill2)}
 /* Legacy only: unchecked inside an accepted sprint. Spec §2.4 forbids this
-   going forward. Muted so it never reads as upcoming work. */
-.story.stale{border-style:dotted;color:var(--mute);background:var(--fill);opacity:.75}
+   going forward. Hatched rather than flat grey — the agent fills are pastel, and
+   a flat grey card among them could be misread as somebody's colour. The hatch
+   is structural, so it cannot be confused with any fill. */
+.story.stale{border-style:dotted;color:var(--mute);
+  background:repeating-linear-gradient(135deg,#e6e5e0 0 5px,#d3d2cc 5px 7px)}
+
+/* Agent legend under the board. */
+.agents{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px;
+  padding-top:10px;border-top:1.5px dashed var(--fill2)}
+.agents span{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--mute)}
+.agents i{width:11px;height:11px;border-radius:3px;border:1px solid var(--fill2);display:inline-block}
 .check{flex:none;display:flex;align-items:center;padding:8px 12px;font-size:12px;white-space:nowrap}
 .check.pending{border-style:dashed;color:var(--mute)}
 .emptyrow{color:var(--mute);font-size:12px;padding:8px 0}
@@ -130,8 +164,13 @@ a{color:inherit}
   .sprint{display:none;border-top:0;padding:0}
   .sprint.shown{display:block}
   .sprint .name{width:auto;margin-bottom:8px}
-  .stories{flex-direction:column;gap:6px}
-  .story{max-width:none;width:100%}
+  .stories{grid-template-columns:1fr;gap:6px}
+  /* A vertical list reads better as rows than as stacked squares. */
+  .story{aspect-ratio:auto;flex-direction:row;justify-content:flex-start;gap:8px;
+    padding:9px 10px;text-align:left}
+  .story .ttl{flex:1;margin:0;justify-content:flex-start}
+  .story .ttl b{-webkit-line-clamp:2;text-align:left}
+  .story .mark{order:-1}
   .check{display:none}
   .mcheck{display:block;margin-top:8px;padding:8px 10px;font-size:12px;text-align:center}
   .mcheck.pending{border-style:dashed;color:var(--mute)}

@@ -66,6 +66,11 @@ var AMSRender = (function () {
   }
 
   var DOT = { done: 'dot', progress: 'dot half', planned: 'dot ring', stale: 'dot stale' };
+  var MARK = { done: '\u2713', progress: '\u22EF', planned: '', stale: '\u2013' };
+  var STATE_LABEL = {
+    done: 'done', progress: 'in progress', planned: 'planned',
+    stale: 'not completed \u2014 the sprint was accepted with this story still open'
+  };
 
   /* ---------- status bar (pin 1) ---------- */
   function statusBar(s) {
@@ -82,18 +87,35 @@ var AMSRender = (function () {
   }
 
   /* ---------- board (pins 2-3) ---------- */
-  function storyNode(st) {
+  function storyNode(st, colours) {
     var n = el('div', 'box story ' + st.state);
-    n.appendChild(el('span', DOT[st.state] || 'dot'));
+    n.dataset.story = st.id;
+
+    /* Only done and in-progress carry an agent fill. Planned stays white so the
+       filled run shows how far the sprint has got, and the dropped state keeps
+       its hatch. */
+    var c = colours && st.owner ? colours[st.owner] : null;
+    if (c && (st.state === 'done' || st.state === 'progress')) {
+      n.style.background = c.fill;
+      n.style.borderColor = c.edge;
+    }
+
     n.appendChild(el('span', 'sid', st.id));
-    n.appendChild(el('span', 'ttl', st.title));
-    n.title = st.id + ' · ' + st.title + ' — ' +
-      ({ done: 'done', progress: 'in progress', planned: 'planned',
-         stale: 'not completed (sprint was accepted with this story open)' }[st.state]);
+    var ttl = el('span', 'ttl');
+    ttl.appendChild(el('b', null, st.title));
+    n.appendChild(ttl);
+    var mark = el('span', 'mark', MARK[st.state] || '');
+    n.appendChild(mark);
+
+    var who = st.owners && st.owners.length ? st.owners.join(' and ') : null;
+    n.title = st.id + ' · ' + st.title +
+      (who ? '\n' + who : '') +
+      (st.model ? ' · ' + st.model : '') +
+      '\n' + STATE_LABEL[st.state];
     return n;
   }
 
-  function sprintNode(s) {
+  function sprintNode(s, colours) {
     var row = el('div', 'sprint' + (s.isCurrent ? ' cur' : ''));
     row.dataset.sprint = s.id;
 
@@ -104,7 +126,7 @@ var AMSRender = (function () {
 
     var stories = el('div', 'stories');
     if (!s.stories.length) stories.appendChild(el('div', 'emptyrow', 'No stories in this sprint file.'));
-    s.stories.forEach(function (st) { stories.appendChild(storyNode(st)); });
+    s.stories.forEach(function (st) { stories.appendChild(storyNode(st, colours)); });
     row.appendChild(stories);
 
     var accepted = s.acceptance.accepted;
@@ -119,12 +141,18 @@ var AMSRender = (function () {
   function board(model, selectedId) {
     var host = $('board');
     clear(host);
-    if (!model.sprints.length) return;
+    if (!model.sprints.length) { agentLegend([]); return; }
+
+    var roster = AMSAgents.roster(model.sprints);
+    var colours = {};
+    roster.forEach(function (r) { colours[r.name] = r.colour; });
+
     model.sprints.forEach(function (s) {
-      var row = sprintNode(s);
+      var row = sprintNode(s, colours);
       if (s.id === selectedId) row.classList.add('shown');
       host.appendChild(row);
     });
+    agentLegend(roster);
 
     var tabs = $('tabs');
     clear(tabs);
@@ -133,6 +161,23 @@ var AMSRender = (function () {
       b.setAttribute('aria-selected', String(s.id === selectedId));
       b.dataset.sprint = s.id;
       tabs.appendChild(b);
+    });
+  }
+
+  /* Who is on this board, and in what colour. */
+  function agentLegend(roster) {
+    var host = $('agents');
+    if (!host) return;
+    clear(host);
+    host.classList.toggle('hidden', !roster.length);
+    roster.forEach(function (r) {
+      var s = el('span');
+      var sw = el('i');
+      sw.style.background = r.colour.fill;
+      sw.style.borderColor = r.colour.edge;
+      s.appendChild(sw);
+      s.appendChild(document.createTextNode(r.name));
+      host.appendChild(s);
     });
   }
 
