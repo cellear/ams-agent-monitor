@@ -292,6 +292,46 @@ var AMSChecks = (function () {
   });
 
   /* ------------------------------------------------------------------ *
+   * Unit: body fetch URLs                                               *
+   * ------------------------------------------------------------------ */
+
+  /* REGRESSION: bodies were fetched at the mutable ref HEAD while change
+     detection compared the immutable blob sha from the API listing. A cached
+     HEAD response therefore outlived the change that invalidated it, and the
+     board rendered a body that did not match the sha it had just verified —
+     silently, with the status bar reporting a fresh check. Seen on
+     factcheck-site 2026-09-02: sprint-4.md showed S4-1 and S4-R open for ~16
+     hours after they were ticked, while sprint-5.md, fetched in the same pass,
+     was current. The sha in the query string makes each version its own URL. */
+  suite('github — body URLs are keyed to the blob sha', function (t) {
+    var seen = [];
+    var realFetch = window.fetch;
+    window.fetch = function (url) {
+      seen.push(url);
+      return Promise.resolve({
+        ok: true, status: 200,
+        headers: { get: function () { return null; } },
+        text: function () { return Promise.resolve(''); }
+      });
+    };
+    try {
+      AMSGitHub.raw('o/r', 'AMS/SPRINTS/sprint-4.md', null, 'abc123');
+      AMSGitHub.raw('o/r', 'AMS/SPRINTS/sprint-4.md', null, 'def456');
+      AMSGitHub.raw('o/r', 'AMS/SPRINTS/sprint-4.md');
+    } finally {
+      window.fetch = realFetch;
+    }
+
+    t.eq(seen[0],
+      'https://raw.githubusercontent.com/o/r/HEAD/AMS/SPRINTS/sprint-4.md?v=abc123',
+      'the blob sha is carried in the URL');
+    t.ok(seen[0] !== seen[1],
+      'two shas for one path are two different URLs, so no cache can serve one for the other');
+    t.eq(seen[2], 'https://raw.githubusercontent.com/o/r/HEAD/AMS/SPRINTS/sprint-4.md',
+      'no sha, no query string — an unversioned caller is unchanged');
+  });
+
+  /* ------------------------------------------------------------------ *
    * Unit: repo input                                                    *
    * ------------------------------------------------------------------ */
 
