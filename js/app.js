@@ -105,7 +105,10 @@ var AMSApp = (function () {
     if (!res.sprints) return Promise.resolve(null);
     var files = res.sprints.entries.filter(AMSSprints.isSprintFile);
     return Promise.all(files.map(function (e) {
-      return AMSGitHub.raw(state.repo, e.path).then(function (body) {
+      /* e.sha keys the fetch to this exact version of the file: the listing
+         is what told us the file changed, so the body must be read at the sha
+         the listing reported, not at whatever a cache still holds for HEAD. */
+      return AMSGitHub.raw(state.repo, e.path, null, e.sha).then(function (body) {
         return { name: e.name, body: body };
       });
     })).then(buildBoard);
@@ -119,7 +122,7 @@ var AMSApp = (function () {
   function loadHandoffBody(entry) {
     if (!entry) return Promise.resolve(null);
     if (state.handoffCache[entry.name]) return Promise.resolve(state.handoffCache[entry.name]);
-    return AMSGitHub.raw(state.repo, entry.path).then(function (body) {
+    return AMSGitHub.raw(state.repo, entry.path, null, entry.sha).then(function (body) {
       state.handoffCache[entry.name] = AMSHandoffs.parse(entry.name, body);
       return state.handoffCache[entry.name];
     });

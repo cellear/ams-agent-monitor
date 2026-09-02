@@ -92,9 +92,30 @@ var AMSGitHub = (function () {
   }
 
   /* File bodies come from raw.githubusercontent, which is not metered.
-     Case-sensitive, which is why config discovery lists the directory. */
-  function raw(repo, path, ref) {
+     Case-sensitive, which is why config discovery lists the directory.
+
+     `version` is the blob sha the directory listing reported for this file. It
+     is not read by the server — it is there to make the URL change whenever the
+     content changes.
+
+     Without it every body request names the mutable ref HEAD, and that URL is
+     cached: raw.githubusercontent serves `max-age=300`, and the response also
+     sits in a Fastly POP. Change detection meanwhile compares the IMMUTABLE
+     blob sha from the API. The two can disagree, and the failure is silent and
+     file-specific: the listing says a file changed, the app refetches it, a
+     cache answers with the previous body, and the board renders content that
+     does not match the sha it just verified — while the status bar reports that
+     it checked a moment ago. Observed on 2026-09-02 against factcheck-site,
+     where sprint-4.md rendered S4-1 and S4-R as open for ~16 hours after they
+     were ticked, while sprint-5.md, fetched in the same pass, was current.
+
+     Keying the URL to the sha gives each version its own resource, so a cache
+     holding the old body can never answer a request for the new one. That entry
+     is still a hit for the URL it belongs to, which is what caches are for; it
+     is simply no longer the URL being asked for. */
+  function raw(repo, path, ref, version) {
     var url = RAW + '/' + repo + '/' + (ref || 'HEAD') + '/' + path;
+    if (version) url += '?v=' + encodeURIComponent(version);
     return fetch(url, { headers: headers() }).then(function (res) {
       if (res.status === 404) throw fail('not-found', 'Missing file: ' + path);
       if (!res.ok) throw fail(classify(res.status), 'Raw fetch ' + res.status + ' for ' + path);

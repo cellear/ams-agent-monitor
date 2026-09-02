@@ -66,7 +66,7 @@ var AMSRepo = (function () {
         })[0];
         var names = r.entries.map(function (e) { return e.name; });
         if (!entry) return { amsDir: dir, listing: names, configPath: null, config: null };
-        return gh.raw(repo, entry.path).then(function (body) {
+        return gh.raw(repo, entry.path, null, entry.sha).then(function (body) {
           return { amsDir: dir, listing: names, configPath: entry.path, config: parseConfig(body) };
         });
       }, function (err) {
